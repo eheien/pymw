@@ -7,8 +7,12 @@ import time
 
 # For BOINC: create a uniquely-named file x in the download hierarchy, file name should contain batch ID
 def pymw_worker_call(interface, worker_executable, input):
-	os.mkdir("input_files")
-	os.mkdir("output_files")
+	try:
+		os.mkdir("input_files")
+		os.mkdir("output_files")
+	except OSError:
+		pass
+	
 	input_file_name = interface.get_unique_file_name("input_files/")
 	output_file_name = interface.get_unique_file_name("output_files/")
 	input_file = open(input_file_name, 'w')

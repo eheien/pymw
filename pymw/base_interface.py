@@ -1,4 +1,4 @@
-import thread
+import threading
 import tempfile
 import shutil
 import os
@@ -6,16 +6,18 @@ import os
 
 #static jobID
 
-def executor(task_list):
+def executor(task_list, task_finish_notify, finished_tasks):
 	for task in task_list:
-		#print "Executing", task[0], task[1], task[2]
+		print "Executing", task[0], task[1], task[2]
 		shutil.copyfile(task[1], "input")
 		execfile(task[0])
-		shutil.move("output", task[2])
-		f = open(task[2]+"_done", "w")
-		f.close()
+		os.rename("output", task[2])
 		os.remove("input")
-
+		
+		task_finish_notify.acquire()
+		finished_tasks.append(task)
+		task_finish_notify.release()
+		
 class BaseSystemInterface:
 	def __init__(self):
 		self.task_list = []
@@ -30,32 +32,29 @@ class BaseSystemInterface:
 
 	def start_execution(self):
 		self.unfinished_task_list = self.task_list[:]
-		thread.start_new_thread(executor, (self.task_list,))
+		self.task_finish_notify = threading.Lock()
+		self.finished_tasks = []
+		self.executor_thread = threading.Thread(target=executor, args=(self.task_list,self.task_finish_notify, self.finished_tasks))
+		self.executor_thread.run()
 
 	def execution_finished(self):
-		num_tasks = len(self.task_list)
-		num_unfinished = len(self.unfinished_task_list)
-		#print str(num_tasks-num_unfinished) + " of " + str(num_tasks) + " tasks are done"
-		if num_unfinished > 0:
-			return False
-		else:
-			return True
+		if len(self.unfinished_task_list) > 0: return False
+		return True
 
 	def get_next_finished_task(self):
-		for task in self.unfinished_task_list:
-			try:
-				f = open(task[2]+"_done",'r')
-				f.close()
-				result_file = open(task[2])
-				self.unfinished_task_list.remove(task)
-				return result_file
-			except:
-				a = 1
-		return None
+		self.task_finish_notify.acquire()
+		if len(self.finished_tasks) <= 0:
+			self.task_finish_notify.release()
+			return None
+		
+		task = self.finished_tasks.pop()
+		result_file = open(task[2])
+		self.unfinished_task_list.remove(task)
+		self.task_finish_notify.release()
+		return result_file
 
 	def cleanup(self):
 		for task in self.task_list:
 			os.remove(task[1])
 			os.remove(task[2])
-			os.remove(task[2]+"_done")
 
