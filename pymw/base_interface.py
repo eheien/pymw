@@ -8,10 +8,10 @@ import os
 
 def executor(task_list, task_finish_notify, finished_tasks):
 	for task in task_list:
-		print "Executing", task[0], task[1], task[2]
+		#print "Executing", task[0], task[1], task[2]
 		shutil.copyfile(task[1], "input")
 		execfile(task[0])
-		os.rename("output", task[2])
+		shutil.move("output", task[2])
 		os.remove("input")
 		
 		task_finish_notify.acquire()
