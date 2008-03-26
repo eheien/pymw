@@ -1,8 +1,9 @@
 from app_types import *
 from pymw import *
+import time
 
-def make_calls():
-	for i in range(10):
+def setup_workers():
+	for i in range(100):
 		pymw_worker_call(interface, 'worker.py', Input(i))
 
 def handle_result(output):
@@ -12,9 +13,12 @@ def handle_result(output):
 interface = BaseSystemInterface()
 total = 0
 
-pymw_master_call(interface, make_calls, handle_result)
+start = time.time()
+pymw_master_call(interface, setup_workers, handle_result, 8)
+end = time.time()
 
 print "The answer is", total
+print "Total time:", str(end-start)
 
 pymw_cleanup(interface)
 
