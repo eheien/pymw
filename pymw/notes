@@ -31,7 +31,9 @@ Current user commands to PyMW:
 		returns the result to the user.
 
 PyMW Internals:
-	Upon initialization, PyMW creates a scheduler thread.  This thread waits for an available worker (from reserve_worker())
+	Upon initialization, PyMW creates a scheduler thread.
+	This thread waits for an available worker (from reserve_worker()),
+	then executes the task on the worker with execute_task().
 	
 Current interface requirements for an Interface:
 	worker = reserve_worker()
