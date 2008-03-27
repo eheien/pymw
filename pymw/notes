@@ -1,0 +1,46 @@
+Notes for PyMW:
+
+The goal of this project is to provide a generalized Python interface
+for master-worker style computation.  Regardless of the underlying
+platform, a few simple commands should allow for execution of any
+Python script on any infrastructure (multicore, cluster, Grid, etc).
+
+A diagram of the levels of abstraction is shown below:
+
+------------
+User
+------------
+PyMW
+------------
+Interface
+------------
+UNIX Process,
+rsh in cluster
+Grid
+BOINC
+etc
+------------
+
+Current user commands to PyMW:
+	task = submit_task(executable, input_data)
+		Creates a task, submits it to the interface,
+		and returns a Task object to the user.
+	
+	output = wait_for_task_finish(task)
+		Waits for the task to finish execution, then
+		returns the result to the user.
+
+PyMW Internals:
+	Upon initialization, PyMW creates a scheduler thread.  This thread waits for an available worker (from reserve_worker())
+	
+Current interface requirements for an Interface:
+	worker = reserve_worker()
+		Return an object representing a worker that can execute a task.
+		The internals of the worker object are specific to each interface,
+		and are ignored by PyMW.  Some interfaces may return None for a worker.
+		This is implemented mainly to avoid resource overuse, and should allow
+		in the future for task-worker specific matching.
+		
+	execute_task(task, worker)
+		Asynchronously executes the task on the worker.
+		Once execution is complete, task.task_finished() must be called.

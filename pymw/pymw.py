@@ -1,66 +1,106 @@
 from pickle import *
 from base_interface import *
-import time
 import sys
+import threading
 #import boinc
 
-#static jobID
-
-# For BOINC: create a uniquely-named file x in the download hierarchy, file name should contain batch ID
-def pymw_worker_call(interface, worker_executable, input_data):
-	try:
-		os.mkdir("input_files")
-		os.mkdir("output_files")
-	except OSError: pass
+class _SyncQueue:
+	def __init__(self):
+		self.lock = threading.Lock()
+		self.queue = []
 	
-	input_file_name = interface.get_unique_file_name("input_files/")
-	output_file_name = interface.get_unique_file_name("output_files/")
-	input_file = open(input_file_name, 'w')
-	Pickler(input_file).dump(input_data)
-	input_file.close()
-	task = Task(worker_executable, input_file_name, output_file_name)
-	interface.submit_task(task)
+	def __len__(self):
+		self.lock.acquire()
+		q_len = len(self.queue)
+		self.lock.release()
+		return q_len
+	
+	def append(self, item):
+		self.lock.acquire()
+		self.queue.append(item)
+		self.lock.release()
+	
+	def pop(self):
+		self.lock.acquire()
+		try:
+			item = self.queue.pop()
+			return item
+		finally:
+			self.lock.release()
+		return None
+	
+	def remove(self, item):
+		self.lock.acquire()
+		self.queue.remove(item)
+		self.lock.release()
 
-def pymw_master_call(interface, setup_workers, handle_result, num_workers=1):
-	#read jobID from pyboinc_checkpoint
-	if True: #none
-		#create a batch record; jobID = its ID
-		setup_workers()
-		#write jobID to checkpoint file
-	#move all files from old/ to new/
-	interface.start_execution(num_workers)
-	while not interface.execution_finished():
-		task_result = interface.get_next_finished_task()
-		if task_result is not None:
-			output = Unpickler(task_result).load()
-			task_result.close()
-			handle_result(output)
-			#move x to old/
-		else:
-			time.sleep(1)
+	def contains(self, item):
+		self.lock.acquire()
+		n = self.queue.count(item)
+		self.lock.release()
+		if n != 0: return True
+		else: return False
 
-def pymw_status(interface):
-	return interface.get_status()
-
-def pymw_cleanup(interface):
-	interface.cleanup()
-	try:
-		os.rmdir("input_files")
-		os.rmdir("output_files")
-	except: pass
-
+class _Task:
+	def __init__(self, executable, input_data, task_finish_event, finished_list):
+		self.executable = executable
+		self.input_data = input_data
+		self.output_data = None
+		self.task_finish_event = task_finish_event
+		self.finished_list = finished_list
+	
+	def task_finished(self):
+		self.finished_list.append(self)
+		self.task_finish_event.set()
+	
+class PyMW_Master:
+	def __init__(self, interface):
+		self.interface = interface
+		self._exit = False
+		self._submitted_tasks = _SyncQueue()
+		self._queued_tasks = _SyncQueue()
+		self._finished_tasks = _SyncQueue()
+		self._task_queue_sem = threading.Semaphore(0)
+		self._task_finish_event = threading.Event()
+		scheduler_thread = threading.Thread(target=self._scheduler)
+		scheduler_thread.start()
+	
+	def __del__(self):
+		self._exit = True
+	
+	# Note: it is possible for two different Masters to assign tasks to the same worker
+	def _scheduler(self):
+		while not self._exit:
+			self._task_queue_sem.acquire(blocking=True)
+			next_task = self._queued_tasks.pop()
+			worker = self.interface.reserve_worker()
+			self.interface.execute_task(next_task, worker)
+		# Kill tasks that are still executing?
+	
+	def submit_task(self, executable, input_data):
+		new_task = _Task(executable, input_data, self._task_finish_event, self._finished_tasks)
+		self._submitted_tasks.append(new_task)
+		self._queued_tasks.append(new_task)
+		self._task_queue_sem.release()
+		return new_task
+	
+	def wait_for_task_finish(self, task):
+		if not self._submitted_tasks.contains(task):
+			return None
+		
+		while True:
+			self._task_finish_event.clear()
+			if self._finished_tasks.contains(task):
+				return task.output_data
+			self._task_finish_event.wait()
+	
+	def get_status(self):
+		return self.interface.get_status()
+	
 def pymw_get_input():
-	#boinc.boinc_resolve_filename("input", infile)
-	input_file_name = sys.argv[1]
-	infile = open(input_file_name, 'r')
-	obj = Unpickler(infile).load()
-	infile.close()
+	obj = Unpickler(sys.stdin).load()
 	return obj
 
 def pymw_return_output(output):
-	#boinc.boinc_resolve_filename("output", outfile)
-	output_file_name = sys.argv[2]
-	outfile = open(output_file_name, 'w')
-	Pickler(outfile).dump(output)
-	outfile.close()
+	Pickler(sys.stdout).dump(output)
 
