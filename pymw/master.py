@@ -3,10 +3,6 @@ from pymw import *
 from base_interface import *
 import time
 
-def handle_result(output):
-	global total
-	total += output.value
-
 interface = BaseSystemInterface(num_workers=4)
 pymw = PyMW_Master(interface)
 
@@ -22,5 +18,4 @@ print "The answer is", total
 print "Total time:", str(end-start)
 
 print pymw.get_status()
-#pymw.pymw_cleanup(interface)
 

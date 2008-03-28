@@ -1,8 +1,7 @@
-from pickle import *
-from base_interface import *
 import sys
 import threading
-#import boinc
+import cPickle
+import time
 
 class _SyncQueue:
 	def __init__(self):
@@ -46,10 +45,14 @@ class _Task:
 		self.executable = executable
 		self.input_data = input_data
 		self.output_data = None
+		self.create_time = time.time()
+		self.execute_time = 0
+		self.finish_time = 0
 		self.task_finish_event = task_finish_event
 		self.finished_list = finished_list
 	
 	def task_finished(self):
+		self.finish_time = time.time()
 		self.finished_list.append(self)
 		self.task_finish_event.set()
 	
@@ -73,6 +76,7 @@ class PyMW_Master:
 		while not self._exit:
 			self._task_queue_sem.acquire(blocking=True)
 			next_task = self._queued_tasks.pop()
+			next_task.execute_time = time.time()
 			worker = self.interface.reserve_worker()
 			self.interface.execute_task(next_task, worker)
 		# Kill tasks that are still executing?
@@ -95,12 +99,14 @@ class PyMW_Master:
 			self._task_finish_event.wait()
 	
 	def get_status(self):
-		return self.interface.get_status()
+		status = self.interface.get_status()
+		status["tasks"] = self._submitted_tasks
+		return status
 	
 def pymw_get_input():
-	obj = Unpickler(sys.stdin).load()
+	obj = cPickle.Unpickler(sys.stdin).load()
 	return obj
 
 def pymw_return_output(output):
-	Pickler(sys.stdout).dump(output)
+	cPickle.Pickler(sys.stdout).dump(output)
 

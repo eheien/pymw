@@ -1,6 +1,6 @@
 import subprocess
 import threading
-import pickle
+import cPickle
 import pymw
 
 class _Worker:
@@ -10,7 +10,7 @@ class _Worker:
 	
 	def wait_for_finish(self):
 		self._process.wait()
-		self._active_task.output_data = pickle.Unpickler(self._process.stdout).load()
+		self._active_task.output_data = cPickle.Unpickler(self._process.stdout).load()
 		self._active_task.task_finished()
 		self._finish_sem.release()
 
@@ -27,7 +27,7 @@ class BaseSystemInterface:
 		worker._active_task = task
 		worker._process = subprocess.Popen(args=["/usr/local/bin/python", task.executable],
 										  stdin=subprocess.PIPE, stdout=subprocess.PIPE)#, creationflags=0x08000000)
-		pickle.Pickler(worker._process.stdin).dump(task.input_data)
+		cPickle.Pickler(worker._process.stdin).dump(task.input_data)
 		worker._process.stdin.close()
 		worker_thread = threading.Thread(target=worker.wait_for_finish)
 		worker_thread.start()
