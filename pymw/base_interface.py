@@ -48,10 +48,3 @@ class BaseSystemInterface:
 
 	def get_status(self):
 		return {}#{"num_workers" : self._num_workers}#, "num_active_workers": len(self._active_workers)}
-
-def pymw_get_input():
-	obj = cPickle.Unpickler(sys.stdin).load()
-	return obj
-
-def pymw_return_output(output):
-	cPickle.Pickler(sys.stdout).dump(output)
