@@ -30,6 +30,8 @@ Current user commands to PyMW:
 		Waits for the task to finish execution, then
 		returns the result to the user.
 
+Bug: the PyMW master object must be deleted manually, or the scheduler thread will not exit
+
 PyMW Internals:
 	Upon initialization, PyMW creates a scheduler thread.
 	This thread waits for an available worker (from reserve_worker()),
