@@ -135,11 +135,4 @@ class PyMW_Master:
 		status = self.interface.get_status()
 		status["tasks"] = self._submitted_tasks
 		return status
-	
-def pymw_get_input():
-	obj = cPickle.Unpickler(sys.stdin).load()
-	return obj
-
-def pymw_return_output(output):
-	cPickle.Pickler(sys.stdout).dump(output)
 
