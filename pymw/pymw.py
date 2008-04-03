@@ -86,8 +86,8 @@ class PyMW_Task:
 			pass
 
 		# Set the input and output file locations
-		self._input_arg = file_loc + "/" + self._task_name + ".dat"
-		self._output_arg = file_loc + "/" + self._task_name + ".dat"
+		self._input_arg = file_loc + "/in_" + self._task_name + ".dat"
+		self._output_arg = file_loc + "/out_" + self._task_name + ".dat"
 
 		# Pickle the input data
 		input_data_file = open(self._input_arg, 'w')
