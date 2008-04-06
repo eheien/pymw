@@ -110,8 +110,8 @@ class PyMW_Task:
 	
 	def task_finished(self):
 		"""This must be called by the interface class when the task finishes execution."""
-                global state_lock
-                state_lock.acquire()
+		global state_lock
+		state_lock.acquire()
 
 		output_data_file = open(self._output_arg, 'r')
 		self._output_data = cPickle.Unpickler(output_data_file).load()
@@ -120,12 +120,15 @@ class PyMW_Task:
 		self._finish_time = time.time()
 		self._finish_event.set()
 		
-                state_lock.release()
+		state_lock.release()
 
-	def wait_for_task_finish(self):
-		"""Wait for the task to finish."""
+	def is_task_finished(self, wait):
+		"""Checks if the task is finished, and optionally waits for it to finish."""
 		if not self._finish_event.isSet():
+			if not wait:
+				return False
 			self._finish_event.wait()
+		return True
 
 	def get_total_time(self):
 		"""Get the time from task submission to completion.
@@ -229,12 +232,15 @@ class PyMW_Master:
 		self._save_state()
 		return new_task
 	
-	def wait_for_task_finish(self, task):
-		"""Waits for the provided task to complete execution."""
+	def get_result(self, task, wait=True):
+		"""Gets the result of the executed task.
+		If wait is false and the task is not finished, returns None."""
 		if not self._submitted_tasks.contains(task):
 			return None
 		
-		task.wait_for_task_finish()
+		if not task.is_task_finished(wait):
+			return None
+		
 		self._save_state()              # save state whenever a task finishes
 		return task._output_data
 	

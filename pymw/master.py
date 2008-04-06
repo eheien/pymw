@@ -11,7 +11,7 @@ total = 0
 start = time.time()
 tasks = [pymw_master.submit_task('worker.py', Input(i)) for i in range(100)]
 for task in tasks:
-	total += pymw_master.wait_for_task_finish(task).value
+	total += pymw_master.get_result(task).value
 end = time.time()
 
 print "The answer is", total
