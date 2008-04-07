@@ -28,7 +28,7 @@ class BaseSystemInterface:
 	"""Provides a simple interface for single machine systems.
 	This can take advantage of multicore by starting multiple processes."""
 
-	def __init__(self, num_workers):
+	def __init__(self, num_workers=1):
 		self._num_workers = num_workers
 		self._available_worker_list = pymw._SyncList()
 		self._worker_list = []
