@@ -71,6 +71,12 @@ class _SyncList:
 		if n != 0: return True
 		else: return False
 
+class TaskException(Exception):
+	def __init__(self, value):
+		self.param = value
+	def __str__(self):
+		return repr(self.param)
+
 class PyMW_Task:
 	"""Represents a task to be executed."""
 	def __init__(self, executable, input_data, file_loc="tasks", task_name=None):
@@ -110,8 +116,8 @@ class PyMW_Task:
 	
 	def task_finished(self):
 		"""This must be called by the interface class when the task finishes execution."""
-		global state_lock
-		state_lock.acquire()
+		#global state_lock
+		#state_lock.acquire()
 
 		output_data_file = open(self._output_arg, 'r')
 		self._output_data = cPickle.Unpickler(output_data_file).load()
@@ -120,7 +126,7 @@ class PyMW_Task:
 		self._finish_time = time.time()
 		self._finish_event.set()
 		
-		state_lock.release()
+		#state_lock.release()
 
 	def is_task_finished(self, wait):
 		"""Checks if the task is finished, and optionally waits for it to finish."""
@@ -161,14 +167,16 @@ class PyMW_Scheduler:
 	def _scheduler(self):
 		"""Waits for submissions to the task list, then submits them to the interface."""
 		while not self._finished:
-                        global state_lock
-                        state_lock.acquire()
+                        # Figure out how to fix this
+                        # Currently, this lock prevents tasks from finishing
+			#global state_lock
+			#state_lock.acquire()
 			next_task = self._task_list.wait_pop() # Wait for a task submission
 			if next_task is not None:
 				next_task._execute_time = time.time()
 				worker = self._interface.reserve_worker()
 				self._interface.execute_task(next_task, worker)
-                        state_lock.release()
+			#state_lock.release()
 
 	def _exit(self):
 		"""Signals the scheduler thread to exit."""
@@ -183,44 +191,47 @@ class PyMW_Master:
 		self._queued_tasks = _SyncList()
 		# Try to restore state first, otherwise _restore_state may conflict with the scheduler
 		self._use_state_records = use_state_records
-		if use_state_records:
-                        self._restore_state()
+		self._restore_state()
 		self._scheduler = PyMW_Scheduler(self._queued_tasks, self._interface)
 	
 	def __del__(self):
 		self._scheduler._exit()
 	
 	def _save_state(self):
-                """Save the current state of the computation to a record file.
-                This includes the state of the interface."""
-                global state_lock
-                state_lock.acquire()
-                pymw_state = {}
-                
-                try:
-                        interface_state = self._interface._save_state()
-                        state_file = open("pymw_state_tmp.dat", 'w')
-                        try:
-                                cPickle.Pickler(state_file).dump(pymw_state)
-                                cPickle.Pickler(state_file).dump(interface_state)
-                        except:
-                                pass
-                        state_file.close()
-                        os.rename("pymw_state_tmp.dat", "pymw_state.dat")
-                except:
-                        pass
-                state_lock.release()
+		"""Save the current state of the computation to a record file.
+		This includes the state of the interface."""
+		if not self._use_state_records: return
+		
+		global state_lock
+		state_lock.acquire()
+		pymw_state = {}
+		
+		try:
+			interface_state = self._interface._save_state()
+			state_file = open("pymw_state_tmp.dat", 'w')
+			try:
+				cPickle.Pickler(state_file).dump(pymw_state)
+				cPickle.Pickler(state_file).dump(interface_state)
+			except:
+				pass
+			state_file.close()
+			os.rename("pymw_state_tmp.dat", "pymw_state.dat")
+		except:
+			pass
+		state_lock.release()
 		
 	def _restore_state(self):
-                """Restore the previous state of a computation from a record file.
-                This should only be called at the beginning of a program."""
-                try:
-                        state_file = open("pymw_state.dat", 'r')
-                        pymw_state = cPickle.Unpickler(state_file).load()
-                        interface_state = cPickle.Unpickler(state_file).load()
-                        self._interface._restore_state(interface_state)
-                except:
-                        pass
+		"""Restore the previous state of a computation from a record file.
+		This should only be called at the beginning of a program."""
+		if not self._use_state_records: return
+		
+		try:
+			state_file = open("pymw_state.dat", 'r')
+			pymw_state = cPickle.Unpickler(state_file).load()
+			interface_state = cPickle.Unpickler(state_file).load()
+			self._interface._restore_state(interface_state)
+		except:
+			pass
 		
 	def submit_task(self, executable, input_data):
 		"""Creates and submits a task to the internal list for execution.
@@ -236,7 +247,7 @@ class PyMW_Master:
 		"""Gets the result of the executed task.
 		If wait is false and the task is not finished, returns None."""
 		if not self._submitted_tasks.contains(task):
-			return None
+			raise TaskException("Task has not been submitted")
 		
 		if not task.is_task_finished(wait):
 			return None
