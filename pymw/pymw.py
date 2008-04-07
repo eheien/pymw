@@ -77,6 +77,12 @@ class TaskException(Exception):
 	def __str__(self):
 		return repr(self.param)
 
+class InterfaceException(Exception):
+	def __init__(self, value):
+		self.param = value
+	def __str__(self):
+		return repr(self.param)
+
 class PyMW_Task:
 	"""Represents a task to be executed."""
 	def __init__(self, executable, input_data, file_loc="tasks", task_name=None):
@@ -114,14 +120,23 @@ class PyMW_Task:
 	def __str__(self):
 		return self._task_name
 	
-	def task_finished(self):
-		"""This must be called by the interface class when the task finishes execution."""
+	def task_finished(self, error=None):
+		"""This must be called by the interface class when the
+		task finishes execution."""
 		#global state_lock
 		#state_lock.acquire()
 
-		output_data_file = open(self._output_arg, 'r')
-		self._output_data = cPickle.Unpickler(output_data_file).load()
-		output_data_file.close()
+                if error:
+                        self._error = error
+                else:
+                        self._error = None
+                
+		try:
+			output_data_file = open(self._output_arg, 'r')
+			self._output_data = cPickle.Unpickler(output_data_file).load()
+			output_data_file.close()
+		except:
+			pass
 
 		self._finish_time = time.time()
 		self._finish_event.set()
@@ -167,8 +182,8 @@ class PyMW_Scheduler:
 	def _scheduler(self):
 		"""Waits for submissions to the task list, then submits them to the interface."""
 		while not self._finished:
-                        # Figure out how to fix this
-                        # Currently, this lock prevents tasks from finishing
+			# Figure out how to fix this
+			# Currently, this lock prevents tasks from finishing
 			#global state_lock
 			#state_lock.acquire()
 			next_task = self._task_list.wait_pop() # Wait for a task submission
@@ -251,6 +266,9 @@ class PyMW_Master:
 		
 		if not task.is_task_finished(wait):
 			return None
+
+		if task._error:
+			raise task._error
 		
 		self._save_state()              # save state whenever a task finishes
 		return task._output_data

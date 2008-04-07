@@ -12,6 +12,11 @@ class TestPyMW(unittest.TestCase):
                 self.assertRaises(pymw.TaskException,
                                   self.pymw_master.get_result,1234)
 
+        def testBadExecutable(self):
+                bad_task = self.pymw_master.submit_task(executable='dead_parrot', input_data=None)
+                self.assertRaises(pymw.InterfaceException,
+                                  self.pymw_master.get_result,bad_task)
+
         def testStandardOperation(self):
                 pymw_total = 0
                 actual_total = 0

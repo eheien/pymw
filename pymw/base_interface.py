@@ -5,13 +5,17 @@ import pymw
 import sys
 
 """On worker restarting:
-Multicore systems cannot handle worker restarts - recording PIDs can result in unspecified behavior (especially if the system is restarted).  The solution is to check for a result on program restart - if it's not there, delete the directory and start the task anew."""
+Multicore systems cannot handle worker restarts - recording PIDs
+can result in unspecified behavior (especially if the system is restarted).
+The solution is to check for a result on program restart - if it's not there,
+delete the directory and start the task anew."""
 
 class _Worker:
 	def __init__(self, worker_num, avail_worker_list):
 		self._active_task = None
 		self._avail_worker_list = avail_worker_list
 		self._worker_num = worker_num
+		self._error = None
 
 	def worker_record(self):
 		if self._active_task: task_name = str(self._active_task)
@@ -19,8 +23,12 @@ class _Worker:
 		return [worker_num, task_name]
 
 	def wait_for_finish(self):
-		self._process.wait()			# wait for the process to finish
-		self._active_task.task_finished()	# notify the task
+		#if self._error: raise InterfaceException(self._error)
+		retcode = self._process.wait()			# wait for the process to finish
+		self.cleanup()
+
+	def cleanup(self):
+		self._active_task.task_finished(self._error)	# notify the task
 		self._active_task = None
 		self._avail_worker_list.append(self)	# rejoin the list of available workers
 
@@ -48,13 +56,20 @@ class BaseSystemInterface:
 	
 	def execute_task(self, task, worker):
 		worker._active_task = task
-		if sys.platform.startswith("win"):
-			worker._process = subprocess.Popen(args=["python",
-				task._executable, task._input_arg, task._output_arg],
-				creationflags=0x08000000)
-		else:
-			worker._process = subprocess.Popen(args=["python",
-				task._executable, task._input_arg, task._output_arg])
+		try:
+			if sys.platform.startswith("win"):
+				worker._process = subprocess.Popen(args=["python",
+					task._executable, task._input_arg, task._output_arg],
+					creationflags=0x08000000)
+			else:
+				worker._process = subprocess.Popen(args=["python",
+					task._executable, task._input_arg, task._output_arg])
+		except OSError:
+			# TODO: check the actual error code
+			worker._error = pymw.InterfaceException("Could not find python")
+			worker.cleanup()
+			return
+		
 		worker_finish_handler = threading.Thread(target=worker.wait_for_finish)
 		worker_finish_handler.start()
 
