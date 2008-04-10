@@ -23,8 +23,10 @@ class _Worker:
 		return [worker_num, task_name]
 
 	def wait_for_finish(self):
-		#if self._error: raise InterfaceException(self._error)
 		retcode = self._process.wait()			# wait for the process to finish
+		if retcode is not 0:
+			self._error = pymw.InterfaceException("Executable failed with error "+str(retcode))
+		
 		self.cleanup()
 
 	def cleanup(self):
@@ -36,10 +38,11 @@ class BaseSystemInterface:
 	"""Provides a simple interface for single machine systems.
 	This can take advantage of multicore by starting multiple processes."""
 
-	def __init__(self, num_workers=1):
+	def __init__(self, num_workers=1, python_loc="python"):
 		self._num_workers = num_workers
 		self._available_worker_list = pymw._SyncList()
 		self._worker_list = []
+		self._python_loc = python_loc
 		for worker_num in range(num_workers):
 			new_worker = _Worker(worker_num, self._available_worker_list)
 			self._available_worker_list.append(new_worker)
@@ -58,12 +61,12 @@ class BaseSystemInterface:
 		worker._active_task = task
 		try:
 			if sys.platform.startswith("win"):
-				worker._process = subprocess.Popen(args=["python",
+				worker._process = subprocess.Popen(args=[self._python_loc,
 					task._executable, task._input_arg, task._output_arg],
-					creationflags=0x08000000)
+					creationflags=0x08000000, stderr=subprocess.PIPE)
 			else:
-				worker._process = subprocess.Popen(args=["python",
-					task._executable, task._input_arg, task._output_arg])
+				worker._process = subprocess.Popen(args=[self._python_loc,
+					task._executable, task._input_arg, task._output_arg], stderr=subprocess.PIPE)
 		except OSError:
 			# TODO: check the actual error code
 			worker._error = pymw.InterfaceException("Could not find python")

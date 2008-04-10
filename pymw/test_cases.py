@@ -5,7 +5,7 @@ import unittest
 
 class TestPyMW(unittest.TestCase):
         def setUp(self):
-                self.interface = base_interface.BaseSystemInterface()
+                self.interface = base_interface.BaseSystemInterface(python_loc="/usr/local/bin/python")
                 self.pymw_master = pymw.PyMW_Master(self.interface)
 
         def testGetResultNoSubmit(self):
@@ -14,8 +14,13 @@ class TestPyMW(unittest.TestCase):
 
         def testBadExecutable(self):
                 bad_task = self.pymw_master.submit_task(executable='dead_parrot', input_data=None)
-                self.assertRaises(pymw.InterfaceException,
-                                  self.pymw_master.get_result,bad_task)
+                self.assertRaises(pymw.InterfaceException, self.pymw_master.get_result, bad_task)
+
+        def testBadPython(self):
+                interface = base_interface.BaseSystemInterface(python_loc="/usr/local/kwyjibo/python")
+                pymw_master = pymw.PyMW_Master(interface)
+                task = pymw_master.submit_task(executable='worker.py', input_data=app_types.Input(0))
+                self.assertRaises(pymw.InterfaceException, pymw_master.get_result, task)
 
         def testStandardOperation(self):
                 pymw_total = 0
