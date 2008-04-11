@@ -95,14 +95,6 @@ class PyMW_Task:
         else:
             self._task_name = task_name
 
-        # Make the directory for input/output files, if it doesn't already exist
-        try:
-            os.mkdir(file_loc)
-        except OSError, e: 
-            #if e.errno <> errno.EEXIST: 
-            #    raise
-            pass
-
         # Set the input and output file locations
         self._input_arg = file_loc + "/in_" + self._task_name + ".dat"
         self._output_arg = file_loc + "/out_" + self._task_name + ".dat"
@@ -217,6 +209,16 @@ class PyMW_Master:
         self._queued_tasks = _SyncList()
         # Try to restore state first, otherwise _restore_state may conflict with the scheduler
         self._use_state_records = use_state_records
+        self._task_dir_name = "tasks"
+
+        # Make the directory for input/output files, if it doesn't already exist
+        try:
+            os.mkdir(self._task_dir_name)
+        except OSError, e: 
+            #if e.errno <> errno.EEXIST: 
+            #    raise
+            pass
+
         self._restore_state()
         self._scheduler = PyMW_Scheduler(self._queued_tasks, self._interface)
     
@@ -260,7 +262,7 @@ class PyMW_Master:
         """Creates and submits a task to the internal list for execution.
         Returns the created task for later use."""
         # TODO: if using restored state, check whether this task has been submitted before
-        new_task = PyMW_Task(executable, input_data)
+        new_task = PyMW_Task(executable, input_data, file_loc=self._task_dir_name)
         self._submitted_tasks.append(new_task)
         self._queued_tasks.append(new_task)
         self._save_state()
@@ -291,4 +293,5 @@ class PyMW_Master:
         for task in self._submitted_tasks._list:
             task.cleanup()
         
+        os.rmdir(self._task_dir_name)
         self._scheduler._exit()
