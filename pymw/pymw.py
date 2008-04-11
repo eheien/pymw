@@ -293,5 +293,9 @@ class PyMW_Master:
         for task in self._submitted_tasks._list:
             task.cleanup()
         
-        os.rmdir(self._task_dir_name)
         self._scheduler._exit()
+        
+        try:
+        	os.rmdir(self._task_dir_name)
+        except OSError:
+        	pass
