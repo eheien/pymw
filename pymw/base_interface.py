@@ -1,3 +1,10 @@
+#!/usr/bin/env python
+"""Provide a multicore interface for master worker computing with PyMW.
+"""
+
+__author__ = "Eric Heien <e-heien@ist.osaka-u.ac.jp>"
+__date__ = "10 April 2008"
+
 import subprocess
 import threading
 import cPickle
