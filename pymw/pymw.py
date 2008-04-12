@@ -17,6 +17,21 @@ assumption that there will be at most 2 threads touching
 the state - the scheduler and the main thread. (not quite true)"""
 state_lock = threading.Lock()
 
+class _SyncListIter:
+    def __init__(self, list_obj):
+        self._list_obj = list_obj
+        self._pos = 0
+    
+    def __iter__(self):
+        return self
+    
+    def next(self):
+        if self._pos >= len(self._list_obj):
+            raise StopIteration
+        next_obj = self._list_obj._list[self._pos]
+        self._pos = self._pos + 1
+        return next_obj
+    
 class _SyncList:
     """Encapsulates a list with atomic operations and semaphore abilities."""
     def __init__(self):
@@ -30,6 +45,9 @@ class _SyncList:
         l_len = len(self._list)
         self._lock.release()
         return l_len
+    
+    def __iter__(self):
+        return _SyncListIter(self)
     
     def append(self, item):
         """Atomically appends an item to the list and increments the semaphore."""
@@ -85,32 +103,41 @@ class InterfaceException(Exception):
 
 class PyMW_Task:
     """Represents a task to be executed."""
-    def __init__(self, executable, input_data, file_loc="tasks", task_name=None):
+    def __init__(self, task_name, executable, input_data=None, input_arg=None, output_arg=None, times=None, file_loc="tasks"):
         self._finish_event = threading.Event()
         self._executable = executable
         self._input_data = input_data
         self._output_data = None
-        if task_name is None:
-            self._task_name = str(executable)+"_"+str(input_data)
-        else:
-            self._task_name = task_name
+        self._task_name = task_name
 
         # Set the input and output file locations
-        self._input_arg = file_loc + "/in_" + self._task_name + ".dat"
-        self._output_arg = file_loc + "/out_" + self._task_name + ".dat"
+        if input_arg:
+            self._input_arg = input_arg
+        else:
+            self._input_arg = file_loc + "/in_" + self._task_name + ".dat"
+        
+        if output_arg:
+            self._output_arg = output_arg
+        else:
+            self._output_arg = file_loc + "/out_" + self._task_name + ".dat"
 
         # Pickle the input data
-        input_data_file = open(self._input_arg, 'w')
-        cPickle.Pickler(input_data_file).dump(input_data)
-        input_data_file.close()
+        if input_data:
+            input_data_file = open(self._input_arg, 'w')
+            cPickle.Pickler(input_data_file).dump(input_data)
+            input_data_file.close()
 
         # Task time bookkeeping
-        self._create_time = time.time()
-        self._execute_time = 0
-        self._finish_time = 0
+        if times:
+            self._times = times
+        else:
+            self._times = [time.time(), 0, 0]
 
     def __str__(self):
         return self._task_name
+    
+    def state_data(self):
+        return [self._task_name, self._executable, self._input_arg, self._output_arg, self._times, self._finish_event.isSet()]
     
     def task_finished(self, task_err=None):
         """This must be called by the interface class when the
@@ -127,10 +154,10 @@ class PyMW_Task:
             output_data_file = open(self._output_arg, 'r')
             self._output_data = cPickle.Unpickler(output_data_file).load()
             output_data_file.close()
-        except:
+        except OSError:
             pass
 
-        self._finish_time = time.time()
+        self._times[2] = time.time()
         self._finish_event.set()
         
         #state_lock.release()
@@ -146,8 +173,8 @@ class PyMW_Task:
     def get_total_time(self):
         """Get the time from task submission to completion.
         Returns None if task has not finished execution."""
-        if self._finish_time != 0:
-            return self._finish_time - self._create_time
+        if self._times[2] != 0:
+            return self._times[2] - self._times[0]
         else:
             return None
 
@@ -155,17 +182,17 @@ class PyMW_Task:
         """Get the time from start of task execution to completion.
         This may be different from the CPU time.
         Returns None if task has not finished execution."""
-        if self._finish_time != 0:
-            return self._finish_time - self._execute_time
+        if self._times[2] != 0:
+            return self._times[2] - self._times[1]
         else:
             return None
 
     def cleanup(self):
-    	try:
-    		os.remove(self._input_arg)
-    		os.remove(self._output_arg)
+        try:
+            os.remove(self._input_arg)
+            os.remove(self._output_arg)
         except OSError:
-        	pass
+            pass
         
 class PyMW_Scheduler:
     """Takes tasks submitted by user and sends them to the master-worker interface.
@@ -187,7 +214,7 @@ class PyMW_Scheduler:
             #state_lock.acquire()
             next_task = self._task_list.wait_pop() # Wait for a task submission
             if next_task is not None:
-                next_task._execute_time = time.time()
+                next_task._times[1] = time.time()
                 worker = self._interface.reserve_worker()
                 self._interface.execute_task(next_task, worker)
             #state_lock.release()
@@ -200,14 +227,15 @@ class PyMW_Scheduler:
 class PyMW_Master:
     """Provides functions for users to submit tasks to the underlying interface."""
     def __init__(self, interface=None, use_state_records=False):
-    	if interface:
-    		self._interface = interface
-    	else:
-    		self._interface = BaseSystemInterface()
-    	
+        if interface:
+            self._interface = interface
+        else:
+            self._interface = BaseSystemInterface()
+        
+        self._state_file_name = "pymw_state.dat"
+        self._state_file_tmp = "pymw_state_tmp.dat"
         self._submitted_tasks = _SyncList()
         self._queued_tasks = _SyncList()
-        # Try to restore state first, otherwise _restore_state may conflict with the scheduler
         self._use_state_records = use_state_records
         self._task_dir_name = "tasks"
 
@@ -219,6 +247,7 @@ class PyMW_Master:
             #    raise
             pass
 
+        # Restore state before starting scheduler
         self._restore_state()
         self._scheduler = PyMW_Scheduler(self._queued_tasks, self._interface)
     
@@ -231,17 +260,20 @@ class PyMW_Master:
         state_lock.acquire()
         pymw_state = {}
         
+        pymw_state["interface_state"] = self._interface._save_state()
+        pymw_state["tasks"] = [task.state_data() for task in self._submitted_tasks]
+        pymw_state["queued_task_list"] = [str(task) for task in self._queued_tasks]
+
         try:
-            interface_state = self._interface._save_state()
-            state_file = open("pymw_state_tmp.dat", 'w')
+            state_file = open(self._state_file_tmp, 'w')
+            
             try:
                 cPickle.Pickler(state_file).dump(pymw_state)
-                cPickle.Pickler(state_file).dump(interface_state)
             except:
-                pass
+                print "Pickler error"
             state_file.close()
-            os.rename("pymw_state_tmp.dat", "pymw_state.dat")
-        except:
+            os.rename(self._state_file_tmp, self._state_file_name)
+        except OSError:
             pass
         state_lock.release()
         
@@ -251,18 +283,37 @@ class PyMW_Master:
         if not self._use_state_records: return
         
         try:
-            state_file = open("pymw_state.dat", 'r')
+            state_file = open(self._state_file_name, 'r')
             pymw_state = cPickle.Unpickler(state_file).load()
-            interface_state = cPickle.Unpickler(state_file).load()
-            self._interface._restore_state(interface_state)
-        except:
+            for task in pymw_state["tasks"]:
+                # TODO: Change this to something prettier (no array indexes)
+                new_task = PyMW_Task(task[0], task[1], input_arg=task[2], output_arg=task[3], times=task[4])
+                if task[5] is True:
+                    new_task.task_finished(task_err=None)
+                self._submitted_tasks.append(new_task)
+            
+            for task in self._submitted_tasks:
+                for queue_task_name in pymw_state["queued_task_list"]:
+                    if str(task) is queue_task_name:
+                        self._queued_tasks.append(task)
+            
+            self._interface._restore_state(pymw_state["interface_state"])
+            state_file.close()
+        except OSError:
             pass
-        
+    
     def submit_task(self, executable, input_data):
         """Creates and submits a task to the internal list for execution.
         Returns the created task for later use."""
-        # TODO: if using restored state, check whether this task has been submitted before
-        new_task = PyMW_Task(executable, input_data, file_loc=self._task_dir_name)
+        # If using restored state, check whether this task has been submitted before
+        task_name = str(executable)+"_"+str(input_data)
+        if self._use_state_records:
+            for task in self._submitted_tasks:
+                if str(task) == task_name:
+                    #print "Found task", task_name
+                    return task
+        
+        new_task = PyMW_Task(task_name, executable, input_data=input_data, file_loc=self._task_dir_name)
         self._submitted_tasks.append(new_task)
         self._queued_tasks.append(new_task)
         self._save_state()
@@ -289,13 +340,12 @@ class PyMW_Master:
         return status
 
     def cleanup(self):
-    	# TODO: implement a better way of iterating
-        for task in self._submitted_tasks._list:
+        for task in self._submitted_tasks:
             task.cleanup()
         
         self._scheduler._exit()
         
         try:
-        	os.rmdir(self._task_dir_name)
+            os.rmdir(self._task_dir_name)
         except OSError:
-        	pass
+            pass

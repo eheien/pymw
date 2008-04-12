@@ -56,10 +56,10 @@ class BaseSystemInterface:
 			self._worker_list.append(new_worker)
 	
 	def _save_state(self):
-		print "saving state"
+		return None
 	
 	def _restore_state(self, old_state):
-		print "restoring state"
+		return
 	
 	def reserve_worker(self):
 		return self._available_worker_list.wait_pop()
