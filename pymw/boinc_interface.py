@@ -25,12 +25,15 @@ class BOINCInterface:
         in_file = task._input_arg.rpartition('/')[2]
 	out_file = task._output_arg.rpartition('/')[2]
 	# get input destination
-        cmd = self._project_home + '/bin/dir_hier_path ' + in_file
-        path = os.popen(cmd, "r").read().strip()
+        cmd = self._project_home + "/bin/dir_hier_path " + in_file
+        in_path = os.popen(cmd, "r").read().strip()
+	cmd = self._project_home + "/bin/dir_hier_path " + task._executable
+	exe_path = os.popen(cmd, "r").read().strip()
 	
 	# copy input files to download dir
 	try:
-	    shutil.copyfile(task._input_arg, path)
+	    shutil.copyfile(task._executable, exe_path)
+	    shutil.copyfile(task._input_arg, in_path)
 	except IOError:
 	    print "Oops! Permission denied..."
 	    return
@@ -40,6 +43,8 @@ class BOINCInterface:
 	dest = self._project_templates + wu_template
 	ln = open("boinc_wu_template.xml").readlines()
 	for i in range(len(ln)):
+	    if re.search("<PYMW_EXECUTABLE>", ln[i]):
+		ln[i] = ln[i].replace("<PYMW_EXECUTABLE>", task._executable)
 	    if re.search("<PYMW_INPUT>", ln[i]):
 		ln[i] = ln[i].replace("<PYMW_INPUT>", in_file)
 	open(dest, "w").writelines(ln)
@@ -56,7 +61,7 @@ class BOINCInterface:
 	cmd =  "create_work -appname pymw -wu_name pymw_" +  str(task._input_data)
 	cmd += " -wu_template templates/" +  wu_template
 	cmd += " -result_template templates/" + result_template 
-	cmd +=  " " + in_file
+	cmd +=  " " + task._executable + " "  + in_file
 	cwd = os.getcwd()
 	os.chdir(self._project_home)
 	os.system(cmd)
