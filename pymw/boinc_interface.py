@@ -47,6 +47,9 @@ class BOINCInterface:
 		ln[i] = ln[i].replace("<PYMW_EXECUTABLE>", task._executable)
 	    if re.search("<PYMW_INPUT>", ln[i]):
 		ln[i] = ln[i].replace("<PYMW_INPUT>", in_file)
+	    if re.search("<PYMW_CMDLINE>", ln[i]):
+		ln[i] = ln[i].replace("<PYMW_CMDLINE>", in_file + " " + out_file)
+
 	open(dest, "w").writelines(ln)
 	# create XML template for the result
 	result_template = "pymw_result_" + str(task._input_data) + ".xml"
@@ -66,5 +69,3 @@ class BOINCInterface:
 	os.chdir(self._project_home)
 	os.system(cmd)
 	os.chdir(cwd)
-
-
