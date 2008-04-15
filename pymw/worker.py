@@ -1,4 +1,3 @@
-from pymw import *
 from app_types import *
 
 input = pymw_get_input()
