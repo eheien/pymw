@@ -10,10 +10,6 @@ class _Worker:
 		self._active_task = None
 		self._host_name = host_name
 	
-	def wait_for_finish(self):
-		self._process.wait()
-		self._active_task.task_finished()
-
 class SCoreSystemInterface:
 	def __init__(self, num_workers):
 		# Use the scoregroups and scorehosts commands to find all hosts accessible from this machine
@@ -43,15 +39,14 @@ class SCoreSystemInterface:
 		#return None #fill this in later
 	
 	def execute_task(self, task, worker):
-		worker._active_task = task
-
 		if sys.platform.startswith("win"):
 			print "SCore not supported on Windows (yet)"
 		else:
-			worker._process = subprocess.Popen(args=["scrun", "--nodes=1",
+			task_process = subprocess.Popen(args=["scrun", "--nodes=1",
 				"python", task._executable, task._input_arg, task._output_arg])
-		worker_thread = threading.Thread(target=worker.wait_for_finish)
-		worker_thread.start()
+			task_process.wait()
+		
+		task.task_finished()
 
 	def get_status(self):
 		return {}#{"num_workers" : self._num_workers}#, "num_active_workers": len(self._active_workers)}

@@ -214,9 +214,10 @@ class PyMW_Scheduler:
             #state_lock.acquire()
             next_task = self._task_list.wait_pop() # Wait for a task submission
             if next_task is not None:
-                next_task._times[1] = time.time()
                 worker = self._interface.reserve_worker()
-                self._interface.execute_task(next_task, worker)
+                next_task._times[1] = time.time()
+                task_thread = threading.Thread(target=self._interface.execute_task, args=(next_task, worker))
+                task_thread.start()
             #state_lock.release()
 
     def _exit(self):
