@@ -1,2 +1,3 @@
 #!/bin/sh
 python worker.py $1 $2
+`touch boinc_finish_called`
