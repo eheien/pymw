@@ -25,6 +25,7 @@ class BOINCInterface:
 	self._project_templates = project_home + "/templates/"
 	self._boinc_wu_template = open("boinc_wu_template.xml").readlines()
 	self._boinc_result_template = open("boinc_result_template.xml").readlines()
+	self._cwd = os.getcwd()
 	
     def reserve_worker(self):
 	return None
@@ -75,14 +76,13 @@ class BOINCInterface:
 	cmd += " -wu_template templates/" +  wu_template
 	cmd += " -result_template templates/" + result_template 
 	cmd +=  " " + task._executable + " "  + in_file
-	cwd = os.getcwd()
 	os.chdir(self._project_home)
 	os.system(cmd)
-	os.chdir(cwd)
+	os.chdir(self._cwd)
 	
 	# Wait for the results
 	tasks = []
-	result = _ResultHandler(task, 4)
+	result = _ResultHandler(task, 10)
 	tasks.append(result)
 	result.start()        
 	for result in tasks:
