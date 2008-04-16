@@ -51,22 +51,24 @@ class BOINCInterface:
 	# Create XML template for the wu
 	wu_template = "pymw_wu_" + str(task._input_data) + ".xml"
 	dest = self._project_templates + wu_template
-	for i in range(len(self._boinc_wu_template)):
-	    if re.search("<PYMW_EXECUTABLE>", self._boinc_wu_template[i]):
-		self._boinc_wu_template[i] = self._boinc_wu_template[i].replace("<PYMW_EXECUTABLE>", task._executable)
-	    if re.search("<PYMW_INPUT>", self._boinc_wu_template[i]):
-		self._boinc_wu_template[i] = self._boinc_wu_template[i].replace("<PYMW_INPUT>", in_file)
-	    if re.search("<PYMW_CMDLINE>", self._boinc_wu_template[i]):
-		self._boinc_wu_template[i] = self._boinc_wu_template[i].replace("<PYMW_CMDLINE>", in_file + " " + out_file)
-
-	open(dest, "w").writelines(self._boinc_wu_template)
+	boinc_wu_template = list(self._boinc_wu_template)
+	for i in range(len(boinc_wu_template)):
+	    if re.search("<PYMW_EXECUTABLE/>", boinc_wu_template[i]):
+		boinc_wu_template[i] = boinc_wu_template[i].replace("<PYMW_EXECUTABLE/>", task._executable)
+	    if re.search("<PYMW_INPUT/>", boinc_wu_template[i]):
+		boinc_wu_template[i] = boinc_wu_template[i].replace("<PYMW_INPUT/>", in_file)
+	    if re.search("<PYMW_CMDLINE/>", boinc_wu_template[i]):
+		boinc_wu_template[i] = boinc_wu_template[i].replace("<PYMW_CMDLINE/>", in_file + " " + out_file)
+	open(dest, "w").writelines(boinc_wu_template)
+	
 	# Create XML template for the result
 	result_template = "pymw_result_" + str(task._input_data) + ".xml"
 	dest = self._project_templates + result_template
-	for i in range(len(self._boinc_result_template)):
-	    if re.search("<PYMW_OUTPUT>", self._boinc_result_template[i]):
-		self._boinc_result_template[i] = self._boinc_result_template[i].replace("<PYMW_OUTPUT>", out_file)
-	open(dest, "w").writelines(self._boinc_result_template)
+	boinc_result_template = list(self._boinc_result_template)
+	for i in range(len(boinc_result_template)):
+	    if re.search("<PYMW_OUTPUT/>", boinc_result_template[i]):
+		boinc_result_template[i] = boinc_result_template[i].replace("<PYMW_OUTPUT/>", out_file)
+	open(dest, "w").writelines(boinc_result_template)
 	
 	# Call create_work
 	cmd =  "create_work -appname pymw -wu_name pymw_" +  str(task._input_data)
