@@ -306,7 +306,7 @@ class PyMW_Master:
         self._interface._restore_state(pymw_state["interface_state"])
         state_file.close()
     
-    def submit_task(self, executable, input_data, task_name=None):
+    def submit_task(self, executable, input_data, new_task_name=None):
         """Creates and submits a task to the internal list for execution.
         Returns the created task for later use.
         executable can be either a filename (Python script) or a function."""
@@ -316,10 +316,10 @@ class PyMW_Master:
         	raise TypeError("executable must be a filename or Python function")
         
         # If using restored state, check whether this task has been submitted before
-        if not task_name:
+        if not new_task_name:
         	task_name = str(executable)+"_"+str(input_data)
-        #else:
-        #	task_name = task_name
+        else:
+        	task_name = new_task_name
         
         if self._use_state_records:
             for task in self._submitted_tasks:

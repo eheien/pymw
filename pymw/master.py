@@ -1,22 +1,25 @@
 from app_types import *
 from pymw import *
 from base_interface import *
+from score_interface import *
+from boinc_interface import *
 import time
 
-base_interface = BaseSystemInterface(num_workers=4)
-pymw_master = PyMW_Master(interface=base_interface)
+interface = BaseSystemInterface(num_workers=4)
+#interface = BOINCInterface(project_home="/var/lib/boinc/szdgr/project")
+#interface = SCoreSystemInterface(num_workers=4)
+pymw_master = PyMW_Master(interface=interface)
 
 total = 0
 
 start = time.time()
-tasks = [pymw_master.submit_task('worker.py', Input(i)) for i in range(10)]
+tasks = [pymw_master.submit_task('worker.py', i) for i in range(1,10)]
 for task in tasks:
-	total += pymw_master.get_result(task).value
+	task, res = pymw_master.get_result(task)
+	total = total + res
 end = time.time()
 
 print "The answer is", total
 print "Total time:", str(end-start)
-
-print pymw_master.get_status()
 
 pymw_master.cleanup()
