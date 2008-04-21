@@ -92,10 +92,14 @@ class TaskException(Exception):
         return repr(self.param)
 
 class InterfaceException(Exception):
-    def __init__(self, value):
+    def __init__(self, value, detail_str=None):
         self.param = value
+        if detail_str:
+            self.details = detail_str
+        else:
+            self.details = ""
     def __str__(self):
-        return repr(self.param)
+        return repr(self.param)+"\n"+repr(self.details)
 
 class PyMW_Task:
     """Represents a task to be executed."""

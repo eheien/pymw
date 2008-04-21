@@ -49,10 +49,12 @@ class BaseSystemInterface:
 				exec_process = subprocess.Popen(args=[self._python_loc,
 					task._executable, task._input_arg, task._output_arg], stderr=subprocess.PIPE)
 			
-			retcode = exec_process.wait()			# wait for the process to finish
+			proc_stdout, proc_stderr = exec_process.communicate()   # wait for the process to finish
+			retcode = exec_process.returncode
 			task_error = None
 			if retcode is not 0:
-				task_error = pymw.InterfaceException("Executable failed with error "+str(retcode))
+				task_error = pymw.InterfaceException("Executable failed with error "+str(retcode), proc_stderr)
+				
 		except OSError:
 			# TODO: check the actual error code
 			task_error = pymw.InterfaceException("Could not find python")

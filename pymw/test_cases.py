@@ -5,7 +5,7 @@ import unittest
 
 class TestPyMW(unittest.TestCase):
     def setUp(self):
-        self.interface = base_interface.BaseSystemInterface(python_loc="/usr/local/bin/python")
+        self.interface = base_interface.BaseSystemInterface()
         self.pymw_master = pymw.PyMW_Master(self.interface)
 
     def tearDown(self):
