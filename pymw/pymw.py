@@ -5,12 +5,16 @@
 __author__ = "Eric Heien <e-heien@ist.osaka-u.ac.jp>"
 __date__ = "10 April 2008"
 
-import sys
 import threading
 import cPickle
 import time
 import os
+import types
 
+# THINK ABOUT THIS
+# New way of handling finished tasks:
+# When a task is finished, it is put on the finished_task list
+# This allows set task checks with wait_contain
 """The state lock ensures that a consistent state snapshot
 will be recorded.  Currently, this code operates under the
 assumption that there will be at most 2 threads touching
@@ -61,17 +65,9 @@ class _SyncList:
         Used only to wake threads that need to exit.  Other uses can cause undefined behavior."""
         self._sem.release()
 
-    def wait_contains(self, item):
-        self._sem.acquire(blocking=True)
-        return self.pop()
-
     def wait_pop(self):
         """Waits for an item to appear in the list, and pops it off."""
         self._sem.acquire(blocking=True)
-        return self.pop()
-
-    def pop(self):
-        """Atomically pops an item off the list or returns None if the list is empty."""
         self._lock.acquire()
         try:
             item = self._list.pop()
@@ -80,7 +76,7 @@ class _SyncList:
             return None
         finally:
             self._lock.release()
-    
+
     def contains(self, item):
         """Checks if the list contains the specified item."""
         self._lock.acquire()
@@ -141,7 +137,8 @@ class PyMW_Task:
     
     def task_finished(self, task_err=None):
         """This must be called by the interface class when the
-        task finishes execution."""
+        task finishes execution.  The result of execution should
+        be in the file indicated by output_arg."""
         #global state_lock
         #state_lock.acquire()
 
@@ -156,6 +153,8 @@ class PyMW_Task:
             output_data_file.close()
         except OSError:
             pass
+        except IOError:
+        	pass
 
         self._times[2] = time.time()
         self._finish_event.set()
@@ -285,29 +284,43 @@ class PyMW_Master:
         
         try:
             state_file = open(self._state_file_name, 'r')
-            pymw_state = cPickle.Unpickler(state_file).load()
-            for task in pymw_state["tasks"]:
-                # TODO: Change this to something prettier (no array indexes)
-                new_task = PyMW_Task(task[0], task[1], input_arg=task[2], output_arg=task[3], times=task[4])
-                if task[5] is True:
-                    new_task.task_finished(task_err=None)
-                self._submitted_tasks.append(new_task)
-            
-            for task in self._submitted_tasks:
-                for queue_task_name in pymw_state["queued_task_list"]:
-                    if str(task) is queue_task_name:
-                        self._queued_tasks.append(task)
-            
-            self._interface._restore_state(pymw_state["interface_state"])
-            state_file.close()
+        
+        except IOError:
+        	return
         except OSError:
-            pass
+        	return
+        
+        pymw_state = cPickle.Unpickler(state_file).load()
+        for task in pymw_state["tasks"]:
+            # TODO: Change this to something prettier (no array indexes)
+            new_task = PyMW_Task(task[0], task[1], input_arg=task[2], output_arg=task[3], times=task[4])
+            if task[5] is True:
+                new_task.task_finished(task_err=None)
+            self._submitted_tasks.append(new_task)
+        
+        for task in self._submitted_tasks:
+            for queue_task_name in pymw_state["queued_task_list"]:
+                if str(task) is queue_task_name:
+                    self._queued_tasks.append(task)
+        
+        self._interface._restore_state(pymw_state["interface_state"])
+        state_file.close()
     
-    def submit_task(self, executable, input_data):
+    def submit_task(self, executable, input_data, task_name=None):
         """Creates and submits a task to the internal list for execution.
-        Returns the created task for later use."""
+        Returns the created task for later use.
+        executable can be either a filename (Python script) or a function."""
+        
+        # Make sure executable is valid
+        if not isinstance(executable, types.StringType) and not isinstance(executable, types.FunctionType):
+        	raise TypeError("executable must be a filename or Python function")
+        
         # If using restored state, check whether this task has been submitted before
-        task_name = str(executable)+"_"+str(input_data)
+        if not task_name:
+        	task_name = str(executable)+"_"+str(input_data)
+        #else:
+        #	task_name = task_name
+        
         if self._use_state_records:
             for task in self._submitted_tasks:
                 if str(task) == task_name:
@@ -320,20 +333,24 @@ class PyMW_Master:
         self._save_state()
         return new_task
     
-    def get_result(self, task, wait=True):
+    def get_result(self, task=None, wait=True):
         """Gets the result of the executed task.
+        If task is None, return the result of the next finished task.
         If wait is false and the task is not finished, returns None."""
-        if not self._submitted_tasks.contains(task):
+        if task and not self._submitted_tasks.contains(task):
             raise TaskException("Task has not been submitted")
         
+        if len(self._submitted_tasks) is 0:
+        	raise TaskException("No tasks yet submitted")
+        
         if not task.is_task_finished(wait):
-            return None
+            return None, None
 
         if task._error:
             raise task._error
         
         self._save_state()              # save state whenever a task finishes
-        return task._output_data
+        return task, task._output_data
     
     def get_status(self):
         status = self._interface.get_status()

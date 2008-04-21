@@ -20,6 +20,7 @@ BOINC, etc
 -------------
 
 Current user commands to PyMW:
+	pymw_master = PyMW_Master(interface, use_state_records=False)
 	task = submit_task(name, executable, input_data)
 		Creates a task, submits it to the interface,
 		and returns a Task object to the user.
