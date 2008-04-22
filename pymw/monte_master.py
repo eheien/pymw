@@ -15,7 +15,7 @@ pymw_master = PyMW_Master(interface=interface)
 start = time.time()
 
 tests_per_task = 100000
-num_tasks = 100
+num_tasks = 10
 tasks = [pymw_master.submit_task('monte_worker.py', input_data=[random(), tests_per_task]) for i in range(num_tasks)]
 
 num_hits = 0
@@ -30,5 +30,3 @@ end = time.time()
 pi_estimate = 4 * float(num_hits)/num_tests
 print pi_estimate, pi_estimate-pi
 print "Total time:", str(end-start)
-
-pymw_master.cleanup()

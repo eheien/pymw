@@ -10,6 +10,7 @@ import cPickle
 import time
 import os
 import types
+import atexit
 
 # THINK ABOUT THIS
 # New way of handling finished tasks:
@@ -254,6 +255,7 @@ class PyMW_Master:
         # Restore state before starting scheduler
         self._restore_state()
         self._scheduler = PyMW_Scheduler(self._queued_tasks, self._interface)
+        atexit.register(self._cleanup)
     
     def _save_state(self):
         """Save the current state of the computation to a record file.
@@ -361,7 +363,8 @@ class PyMW_Master:
         status["tasks"] = self._submitted_tasks
         return status
 
-    def cleanup(self):
+    # TODO: kill active tasks
+    def _cleanup(self):
         for task in self._submitted_tasks:
             task.cleanup()
         

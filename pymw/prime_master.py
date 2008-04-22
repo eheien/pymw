@@ -34,5 +34,3 @@ sqr_primes = filter(sqr_filter, primes)
 print sqr_primes
 
 print "Total time:", str(end-start)
-
-pymw_master.cleanup()

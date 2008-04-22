@@ -45,5 +45,3 @@ while max_fitness < gene_len:
 end = time.time()
 
 print "Total time:", str(end-start)
-
-pymw_master.cleanup()
