@@ -7,9 +7,6 @@ from math import *
 from random import *
 import time
 
-def sqr_filter(x):
-	return sqrt(x-1) == floor(sqrt(x-1))
-
 interface = BaseSystemInterface(num_workers=4, python_loc="/usr/local/bin/python")
 #interface = BOINCInterface(project_home="/var/lib/boinc/szdgr/project")
 #interface = SCoreSystemInterface(num_workers=4)
@@ -17,10 +14,12 @@ pymw_master = PyMW_Master(interface=interface)
 
 start = time.time()
 
-num_total_tests = 1000000
+tests_per_task = 100000
+num_tasks = 100
+tasks = [pymw_master.submit_task('monte_worker.py', input_data=[random(), tests_per_task]) for i in range(num_tasks)]
+
 num_hits = 0
 num_tests = 0
-tasks = [pymw_master.submit_task('monte_worker.py', [random(), num_total_tests/4]) for i in range(4)]
 
 for task in tasks:
 	res_task, res = pymw_master.get_result(task)

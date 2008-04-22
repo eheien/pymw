@@ -37,7 +37,8 @@ ind_set = input["ind_set"]
 for gen in range(num_gens):
     fitness = [fitness_func(ind) for ind in ind_set]
     total_fit = reduce(lambda x, y: x+y, fitness)
-    print total_fit
+    avg_fit = total_fit/len(ind_set)
+    max_fit = reduce(lambda x, y: max(x,y), fitness)
     new_ind_set = []
     num_crossovers = num_inds*cross_rate
     for i in range(num_inds/2):
@@ -53,10 +54,6 @@ for gen in range(num_gens):
             new_ind_set.append(parent1)
             new_ind_set.append(parent2)
     ind_set = new_ind_set
-    #print ind_set
-            
-    #print fitness
 
-#output = Output(current_set)
-#pymw_return_output(output)
+pymw_return_output([total_fit, avg_fit, max_fit, fitness, ind_set])
 

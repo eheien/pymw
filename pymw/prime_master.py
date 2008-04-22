@@ -22,7 +22,8 @@ start = time.time()
 
 primes = []
 
-tasks = [pymw_master.submit_task('prime_worker.py', [task_size*i, task_size*(i+1)]) for i in range(num_tasks)]
+in_data = [[task_size*i, task_size*(i+1)] for i in range(num_tasks)]
+tasks = [pymw_master.submit_task('prime_worker.py', input_data=data) for data in in_data]
 
 for task in tasks:
 	res_task, res = pymw_master.get_result(task)

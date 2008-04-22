@@ -310,7 +310,7 @@ class PyMW_Master:
         self._interface._restore_state(pymw_state["interface_state"])
         state_file.close()
     
-    def submit_task(self, executable, input_data, new_task_name=None):
+    def submit_task(self, executable, input_data=None, new_task_name=None):
         """Creates and submits a task to the internal list for execution.
         Returns the created task for later use.
         executable can be either a filename (Python script) or a function."""

@@ -12,7 +12,6 @@ rand_seed = input[0]
 num_tests = input[1]
 
 seed(rand_seed)
-
 num_hits = 0
 
 for i in xrange(num_tests):
