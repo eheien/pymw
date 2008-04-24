@@ -6,7 +6,7 @@ from random import *
 import time
 
 n_workers = 4
-interface = BaseSystemInterface(num_workers=n_workers, python_loc="/usr/local/bin/python")
+interface = BaseSystemInterface(num_workers=n_workers)
 #interface = BOINCInterface(project_home="/var/lib/boinc/szdgr/project")
 #interface = SCoreSystemInterface(num_workers=4)
 pymw_master = PyMW_Master(interface=interface)
@@ -17,7 +17,7 @@ gene_len = 10
 input_dict["num_inds"] = num_inds
 input_dict["gene_len"] = gene_len
 input_dict["mut_rate"] = 1./gene_len
-input_dict["num_gens"] = 500
+input_dict["num_gens"] = 50
 input_dict["cross_rate"] = 0.7
 
 start = time.time()
