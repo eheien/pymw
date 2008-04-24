@@ -1,6 +1,5 @@
 import pymw
 import base_interface
-import app_types
 import unittest
 
 class TestPyMW(unittest.TestCase):
@@ -24,7 +23,7 @@ class TestPyMW(unittest.TestCase):
     def testBadPython(self):
         interface = base_interface.BaseSystemInterface(python_loc="/usr/local/dead_parrot/python")
         pymw_master = pymw.PyMW_Master(interface)
-        task = pymw_master.submit_task(executable='worker.py', input_data=app_types.Input(0))
+        task = pymw_master.submit_task(executable='worker.py', input_data=1)
         self.assertRaises(pymw.InterfaceException, pymw_master.get_result, task)
         pymw_master.cleanup()
 
@@ -32,7 +31,7 @@ class TestPyMW(unittest.TestCase):
         pymw_total = 0
         actual_total = 0
         num_tasks = 10
-        tasks = [self.pymw_master.submit_task('worker.py', app_types.Input(i)) for i in range(num_tasks)]
+        tasks = [self.pymw_master.submit_task('worker.py', i) for i in range(1,num_tasks)]
         for task in tasks:
             pymw_total += self.pymw_master.get_result(task).value
         for i in range(num_tasks):
@@ -55,7 +54,7 @@ class TestPyMWStateSaveRestore(unittest.TestCase):
     
     def testMakeTasks(self):
         self.num_tasks = 10
-        tasks = [self.pymw_master.submit_task('worker.py', app_types.Input(i)) for i in range(self.num_tasks)]
+        tasks = [self.pymw_master.submit_task('worker.py', i) for i in range(1, self.num_tasks)]
     
 if __name__ == '__main__':
         unittest.main()

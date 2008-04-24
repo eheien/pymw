@@ -1,4 +1,4 @@
-from app_types import *
+from pymw_app import *
 from random import *
 from math import *
 

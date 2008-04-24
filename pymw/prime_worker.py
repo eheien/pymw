@@ -1,4 +1,4 @@
-from app_types import *
+from pymw_app import *
 from math import *
 
 def non_prime_filter(n):

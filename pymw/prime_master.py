@@ -1,4 +1,3 @@
-from app_types import *
 from pymw import *
 from base_interface import *
 from boinc_interface import *

@@ -1,4 +1,3 @@
-from app_types import *
 from pymw import *
 from base_interface import *
 from boinc_interface import *
@@ -14,7 +13,7 @@ pymw_master = PyMW_Master(interface=interface)
 
 start = time.time()
 
-tests_per_task = 100000
+tests_per_task = 10000
 num_tasks = 10
 tasks = [pymw_master.submit_task('monte_worker.py', input_data=[random(), tests_per_task]) for i in range(num_tasks)]
 
