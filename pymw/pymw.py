@@ -127,6 +127,7 @@ class PyMW_Task:
             input_data_file = open(self._input_arg, 'w')
             cPickle.Pickler(input_data_file).dump(input_data)
             input_data_file.close()
+	    time.sleep(0.5)
 
         # Task time bookkeeping
         if times:
