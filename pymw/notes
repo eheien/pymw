@@ -29,8 +29,6 @@ Current user commands to PyMW:
 		Waits for the task to finish execution, then
 		returns the result to the user.
 
-Bug: the PyMW master object must be deleted manually, or the scheduler thread will not exit
-
 PyMW Internals:
 	Upon initialization, PyMW creates a scheduler thread.
 	This thread waits for an available worker (from
@@ -71,8 +69,20 @@ Interface Requirements:
 	called.
 
 Notes for BOINC Interface:
-	The client application consits of two files: a script/batch file,
-	that calls the python interpreter with the worker module and
-	the app_types module. Both files are registered with the copy_file
-	option, since PyMW does not utilize the filename resolution 
-	functionality of BOINC, yet.
+
+The client application consits of two files: a script/batch file,
+
+that calls the python interpreter with the worker module and
+
+the app_types module. Both files are registered with the copy_file
+
+option, since PyMW does not utilize the filename resolution 
+
+functionality of BOINC, yet.
+
+TODO:
+	- Allow for passing of object files to worker through stdin
+	- More carefully define what happens when multiple calls to pymw_return_output are made
+	- Finish state saving functionality, test
+	- Implement MPI interface
+	- Allow functions to be passed as the worker
