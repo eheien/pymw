@@ -106,6 +106,11 @@ class PyMW_Task:
     """Represents a task to be executed."""
     def __init__(self, task_name, executable, input_data=None, input_arg=None, output_arg=None, times=None, file_loc="tasks"):
         self._finish_event = threading.Event()
+        
+        # Make sure executable is valid
+        if not isinstance(executable, types.StringType) and not isinstance(executable, types.FunctionType):
+            raise TypeError("executable must be a filename or Python function")
+        
         self._executable = executable
         self._input_data = input_data
         self._output_data = None
@@ -127,13 +132,15 @@ class PyMW_Task:
             input_data_file = open(self._input_arg, 'w')
             cPickle.Pickler(input_data_file).dump(input_data)
             input_data_file.close()
-	    time.sleep(0.5)
+        time.sleep(0.5)
 
         # Task time bookkeeping
         if times:
             self._times = times
         else:
-            self._times = [time.time(), 0, 0]
+            self._times = {"submit_time": time.time(),
+                           "execute_time": 0,
+                           "finish_time": 0}
 
     def __str__(self):
         return self._task_name
@@ -160,9 +167,9 @@ class PyMW_Task:
         except OSError:
             pass
         except IOError:
-        	pass
+            pass
 
-        self._times[2] = time.time()
+        self._times["finish_time"] = time.time()
         self._finish_event.set()
         
         #state_lock.release()
@@ -178,8 +185,8 @@ class PyMW_Task:
     def get_total_time(self):
         """Get the time from task submission to completion.
         Returns None if task has not finished execution."""
-        if self._times[2] != 0:
-            return self._times[2] - self._times[0]
+        if self._times["finish_time"] != 0:
+            return self._times["finish_time"] - self._times["submit_time"]
         else:
             return None
 
@@ -187,8 +194,8 @@ class PyMW_Task:
         """Get the time from start of task execution to completion.
         This may be different from the CPU time.
         Returns None if task has not finished execution."""
-        if self._times[2] != 0:
-            return self._times[2] - self._times[1]
+        if self._times["finish_time"] != 0:
+            return self._times["finish_time"] - self._times["execute_time"]
         else:
             return None
 
@@ -220,7 +227,7 @@ class PyMW_Scheduler:
             next_task = self._task_list.wait_pop() # Wait for a task submission
             if next_task is not None:
                 worker = self._interface.reserve_worker()
-                next_task._times[1] = time.time()
+                next_task._times["execute_time"] = time.time()
                 task_thread = threading.Thread(target=self._interface.execute_task, args=(next_task, worker))
                 task_thread.start()
             #state_lock.release()
@@ -293,9 +300,9 @@ class PyMW_Master:
             state_file = open(self._state_file_name, 'r')
         
         except IOError:
-        	return
+            return
         except OSError:
-        	return
+            return
         
         pymw_state = cPickle.Unpickler(state_file).load()
         for task in pymw_state["tasks"]:
@@ -318,15 +325,11 @@ class PyMW_Master:
         Returns the created task for later use.
         executable can be either a filename (Python script) or a function."""
         
-        # Make sure executable is valid
-        if not isinstance(executable, types.StringType) and not isinstance(executable, types.FunctionType):
-        	raise TypeError("executable must be a filename or Python function")
-        
         # If using restored state, check whether this task has been submitted before
         if not new_task_name:
-        	task_name = str(executable)+"_"+str(input_data)
+            task_name = str(executable)+"_"+str(input_data)
         else:
-        	task_name = new_task_name
+            task_name = new_task_name
         
         if self._use_state_records:
             for task in self._submitted_tasks:
@@ -348,7 +351,7 @@ class PyMW_Master:
             raise TaskException("Task has not been submitted")
         
         if len(self._submitted_tasks) is 0:
-        	raise TaskException("No tasks yet submitted")
+            raise TaskException("No tasks yet submitted")
         
         if not task.is_task_finished(wait):
             return None, None

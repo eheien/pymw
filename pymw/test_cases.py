@@ -17,6 +17,9 @@ class TestPyMW(unittest.TestCase):
         bad_task = self.pymw_master.submit_task(executable='dead_parrot', input_data=None)
         self.assertRaises(pymw.InterfaceException, self.pymw_master.get_result, bad_task)
 
+    def testBadExecutableType(self):
+        self.assertRaises(TypeError, self.pymw_master.submit_task, executable=1)
+
     def testBadPython(self):
         interface = base_interface.BaseSystemInterface(python_loc="/usr/local/dead_parrot/python")
         pymw_master = pymw.PyMW_Master(interface)
@@ -29,7 +32,8 @@ class TestPyMW(unittest.TestCase):
         num_tasks = 10
         tasks = [self.pymw_master.submit_task('worker.py', i) for i in range(1,num_tasks)]
         for task in tasks:
-            pymw_total += self.pymw_master.get_result(task).value
+            my_task, next_val = self.pymw_master.get_result(task)
+            pymw_total += next_val
         for i in range(num_tasks):
             actual_total += i*i
         self.assertEqual(actual_total, pymw_total)
@@ -51,6 +55,6 @@ class TestPyMWStateSaveRestore(unittest.TestCase):
     def testMakeTasks(self):
         self.num_tasks = 10
         tasks = [self.pymw_master.submit_task('worker.py', i) for i in range(1, self.num_tasks)]
-    
+
 if __name__ == '__main__':
         unittest.main()
