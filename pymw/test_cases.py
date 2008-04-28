@@ -6,9 +6,6 @@ class TestPyMW(unittest.TestCase):
     def setUp(self):
         self.interface = base_interface.BaseSystemInterface()
         self.pymw_master = pymw.PyMW_Master(self.interface)
-
-    def tearDown(self):
-        self.pymw_master.cleanup()
     
     def testGetResultNoSubmit(self):
         self.assertRaises(pymw.TaskException, self.pymw_master.get_result, 1234)
@@ -25,7 +22,6 @@ class TestPyMW(unittest.TestCase):
         pymw_master = pymw.PyMW_Master(interface)
         task = pymw_master.submit_task(executable='worker.py', input_data=1)
         self.assertRaises(pymw.InterfaceException, pymw_master.get_result, task)
-        pymw_master.cleanup()
 
     def testStandardOperation(self):
         pymw_total = 0

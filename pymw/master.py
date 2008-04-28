@@ -22,5 +22,3 @@ end = time()
 
 print "The answer is", total
 print "Total time:", str(end-start)
-
-pymw_master.cleanup()
