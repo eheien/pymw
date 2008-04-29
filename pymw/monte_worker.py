@@ -1,4 +1,4 @@
-from pymw_app import *
+from pymw.pymw_app import *
 from random import *
 from math import *
 

@@ -1,15 +1,12 @@
 from pymw import *
-from interfaces.base_interface import *
-from interfaces.boinc_interface import *
-from interfaces.score_interface import *
 from random import *
 import time
 
 n_workers = 4
-interface = BaseSystemInterface(num_workers=n_workers)
+interface = pymw.interfaces.base_interface.BaseSystemInterface(num_workers=n_workers)
 #interface = BOINCInterface(project_home="/var/lib/boinc/szdgr/project")
 #interface = SCoreSystemInterface(num_workers=4)
-pymw_master = PyMW_Master(interface=interface)
+pymw_master = pymw.PyMW_Master(interface=interface)
 
 input_dict = {}
 num_inds = 10

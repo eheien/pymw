@@ -4,7 +4,7 @@ from pymw import *
 from time import *
 
 # Initialize PyMW using the default interface
-pymw_master = PyMW_Master()
+pymw_master = pymw.PyMW_Master()
 
 total = 0
 start = time()

@@ -6,9 +6,7 @@ __author__ = "Eric Heien <e-heien@ist.osaka-u.ac.jp>"
 __date__ = "10 April 2008"
 
 import subprocess
-import threading
-import cPickle
-import pymw
+import pymw.pymw
 import sys
 import ctypes
 import os
@@ -38,7 +36,7 @@ class BaseSystemInterface:
 
 	def __init__(self, num_workers=1, python_loc="python"):
 		self._num_workers = num_workers
-		self._available_worker_list = pymw._SyncList()
+		self._available_worker_list = pymw.pymw._SyncList()
 		self._worker_list = []
 		self._python_loc = python_loc
 		for worker_num in range(num_workers):
@@ -67,11 +65,11 @@ class BaseSystemInterface:
 			retcode = worker._exec_process.returncode
 			task_error = None
 			if retcode is not 0:
-				task_error = pymw.InterfaceException("Executable failed with error "+str(retcode), proc_stderr)
+				task_error = pymw.pymw.InterfaceException("Executable failed with error "+str(retcode), proc_stderr)
 				
 		except OSError:
 			# TODO: check the actual error code
-			task_error = pymw.InterfaceException("Could not find python")
+			task_error = pymw.pymw.InterfaceException("Could not find python")
 		
 		worker._exec_process = None
 		task.task_finished(task_error)	# notify the task
