@@ -26,6 +26,8 @@ class TestPyMW(unittest.TestCase):
         task = pymw_master.submit_task(executable='worker.py', input_data=1)
         self.assertRaises(pymw.InterfaceException, pymw_master.get_result, task)
 
+    # TODO: add test case for killing workers
+    
     def testStandardOperation(self):
         pymw_total = 0
         actual_total = 0
@@ -40,13 +42,14 @@ class TestPyMW(unittest.TestCase):
 
 class TestPyMWStateSaveRestore(unittest.TestCase):
     def setUp(self):
-        self.interface = base_interface.BaseSystemInterface(python_loc="/usr/local/bin/python")
+        self.interface = base_interface.BaseSystemInterface()
         self.pymw_master = pymw.PyMW_Master(self.interface, use_state_records=True)
     
     def testGetResults(self):
         pymw_total = 0
         for task in self.pymw_master._submitted_tasks:
-            pymw_total += self.pymw_master.get_result(task).value
+            my_task, next_val = self.pymw_master.get_result(task)
+            pymw_total += next_val
         for i in range(self.num_tasks):
             actual_total += i*i
         self.assertEqual(actual_total, pymw_total)

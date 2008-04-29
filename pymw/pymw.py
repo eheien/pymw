@@ -11,6 +11,7 @@ import time
 import os
 import types
 import atexit
+import base_interface
 
 # THINK ABOUT THIS
 # New way of handling finished tasks:
@@ -146,7 +147,12 @@ class PyMW_Task:
         return self._task_name
     
     def state_data(self):
-        return [self._task_name, self._executable, self._input_arg, self._output_arg, self._times, self._finish_event.isSet()]
+        return {"task_name": self._task_name,
+                "executable": self._executable,
+                "input_arg": self._input_arg,
+                "output_arg": self._output_arg,
+                "times": self._times,
+                "finished": self._finish_event.isSet()}
     
     def task_finished(self, task_err=None):
         """This must be called by the interface class when the
@@ -243,7 +249,7 @@ class PyMW_Master:
         if interface:
             self._interface = interface
         else:
-            self._interface = BaseSystemInterface()
+            self._interface = base_interface.BaseSystemInterface()
         
         self._state_file_name = "pymw_state.dat"
         self._state_file_tmp = "pymw_state_tmp.dat"
@@ -251,6 +257,7 @@ class PyMW_Master:
         self._queued_tasks = _SyncList()
         self._use_state_records = use_state_records
         self._task_dir_name = "tasks"
+        self._cur_task_num = 0
 
         # Make the directory for input/output files, if it doesn't already exist
         try:
@@ -303,12 +310,12 @@ class PyMW_Master:
             return
         except OSError:
             return
-        
+
         pymw_state = cPickle.Unpickler(state_file).load()
         for task in pymw_state["tasks"]:
-            # TODO: Change this to something prettier (no array indexes)
-            new_task = PyMW_Task(task[0], task[1], input_arg=task[2], output_arg=task[3], times=task[4])
-            if task[5] is True:
+            new_task = PyMW_Task(task["task_name"], task["executable"], input_arg=task["input_arg"],
+                                 output_arg=task["output_arg"], times=task["times"])
+            if task["finished"] is True:
                 new_task.task_finished(task_err=None)
             self._submitted_tasks.append(new_task)
         
@@ -327,7 +334,8 @@ class PyMW_Master:
         
         # If using restored state, check whether this task has been submitted before
         if not new_task_name:
-            task_name = str(executable)+"_"+str(input_data)
+            task_name = str(executable)+"_"+str(self._cur_task_num)
+            self._cur_task_num += 1
         else:
             task_name = new_task_name
         
@@ -367,8 +375,9 @@ class PyMW_Master:
         status["tasks"] = self._submitted_tasks
         return status
 
-    # TODO: kill active tasks
     def _cleanup(self):
+        self._interface._cleanup()
+        
         for task in self._submitted_tasks:
             task.cleanup()
         
