@@ -1,30 +1,31 @@
 import pymw
-import interfaces.base_interface
+import pymw.interfaces
+import pymw.interfaces.base_interface
 import unittest
 
 class TestPyMW(unittest.TestCase):
     def setUp(self):
-        self.interface = interfaces.base_interface.BaseSystemInterface()
-        self.pymw_master = pymw.PyMW_Master(self.interface)
+        self.interface = pymw.interfaces.base_interface.BaseSystemInterface()
+        self.pymw_master = pymw.pymw.PyMW_Master(self.interface)
     
     def testGetResultNoSubmit(self):
-        self.assertRaises(pymw.TaskException, self.pymw_master.get_result, 1234)
+        self.assertRaises(pymw.pymw.TaskException, self.pymw_master.get_result, 1234)
     
     def testGetAnyResultNoSubmit(self):
-        self.assertRaises(pymw.TaskException, self.pymw_master.get_result)
+        self.assertRaises(pymw.pymw.TaskException, self.pymw_master.get_result)
 
     def testBadExecutable(self):
         bad_task = self.pymw_master.submit_task(executable='dead_parrot', input_data=None)
-        self.assertRaises(pymw.InterfaceException, self.pymw_master.get_result, bad_task)
+        self.assertRaises(pymw.pymw.InterfaceException, self.pymw_master.get_result, bad_task)
 
     def testBadExecutableType(self):
         self.assertRaises(TypeError, self.pymw_master.submit_task, executable=1)
 
     def testBadPython(self):
-        interface = interfaces.base_interface.BaseSystemInterface(python_loc="/usr/local/dead_parrot/python")
-        pymw_master = pymw.PyMW_Master(interface)
+        interface = pymw.interfaces.base_interface.BaseSystemInterface(python_loc="/usr/local/dead_parrot/python")
+        pymw_master = pymw.pymw.PyMW_Master(interface)
         task = pymw_master.submit_task(executable='worker.py', input_data=1)
-        self.assertRaises(pymw.InterfaceException, pymw_master.get_result, task)
+        self.assertRaises(pymw.pymw.InterfaceException, pymw_master.get_result, task)
 
     # TODO: add test case for killing workers
     
@@ -42,8 +43,8 @@ class TestPyMW(unittest.TestCase):
 
 class TestPyMWStateSaveRestore(unittest.TestCase):
     def setUp(self):
-        self.interface = interfaces.base_interface.BaseSystemInterface()
-        self.pymw_master = pymw.PyMW_Master(self.interface, use_state_records=True)
+        self.interface = pymw.interfaces.base_interface.BaseSystemInterface()
+        self.pymw_master = pymw.pymw.PyMW_Master(self.interface, use_state_records=True)
     
     def testGetResults(self):
         pymw_total = 0
