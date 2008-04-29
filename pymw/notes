@@ -80,9 +80,9 @@ option, since PyMW does not utilize the filename resolution
 functionality of BOINC, yet.
 
 TODO:
-	- Organize files into folders (subpackages)
-	- Allow for passing of object files to worker through stdin
 	- More carefully define what happens when multiple calls to pymw_return_output are made
 	- Finish state saving functionality, test
 	- Implement MPI interface
 	- Allow functions to be passed as the worker
+	- Allow for passing of object files to worker through stdin
+	

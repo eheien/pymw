@@ -33,7 +33,7 @@ class TestPyMW(unittest.TestCase):
         pymw_total = 0
         actual_total = 0
         num_tasks = 10
-        tasks = [self.pymw_master.submit_task('worker.py', i) for i in range(1,num_tasks)]
+        tasks = [self.pymw_master.submit_task('worker.py', i) for i in range(num_tasks)]
         for task in tasks:
             my_task, next_val = self.pymw_master.get_result(task)
             pymw_total += next_val
@@ -58,7 +58,7 @@ class TestPyMWStateSaveRestore(unittest.TestCase):
     
     def testMakeTasks(self):
         self.num_tasks = 10
-        tasks = [self.pymw_master.submit_task('worker.py', i) for i in range(1, self.num_tasks)]
+        tasks = [self.pymw_master.submit_task('worker.py', i) for i in range(self.num_tasks)]
 
 if __name__ == '__main__':
         unittest.main()
