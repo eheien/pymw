@@ -1,10 +1,11 @@
 #!/usr/bin/env python
 
 from pymw import *
+import pymw.interfaces.score_interface
 from time import *
 
-# Initialize PyMW using the default interface
-pymw_master = pymw.PyMW_Master()
+interface = pymw.interfaces.score_interface.SCoreSystemInterface(num_workers=4)
+pymw_master = pymw.pymw.PyMW_Master(interface=interface)
 
 total = 0
 start = time()
@@ -16,3 +17,4 @@ end = time()
 
 print "The answer is", total
 print "Total time:", str(end-start)
+
