@@ -12,6 +12,7 @@ import os
 import types
 import atexit
 import base_interface
+import logging
 
 # THINK ABOUT THIS
 # New way of handling finished tasks:
@@ -129,10 +130,10 @@ class PyMW_Task:
             self._output_arg = file_loc + "/out_" + self._task_name + ".dat"
 
         # Pickle the input data
-        if input_data:
-            input_data_file = open(self._input_arg, 'w')
-            cPickle.Pickler(input_data_file).dump(input_data)
-            input_data_file.close()
+        logging.info("Pickling task "+str(self)+" into file "+self._input_arg)
+        input_data_file = open(self._input_arg, 'w')
+        cPickle.Pickler(input_data_file).dump(input_data)
+        input_data_file.close()
         time.sleep(0.5)
 
         # Task time bookkeeping
@@ -175,6 +176,7 @@ class PyMW_Task:
         except IOError:
             pass
 
+        logging.info("Task "+str(self)+" finished")
         self._times["finish_time"] = time.time()
         self._finish_event.set()
         
@@ -216,6 +218,7 @@ class PyMW_Scheduler:
     """Takes tasks submitted by user and sends them to the master-worker interface.
     This is done in a separate thread to allow for asynchronous program execution."""
     def __init__(self, task_list, interface):
+        logging.info("PyMW_Scheduler started")
         self._task_list = task_list
         self._interface = interface
         self._finished = False
@@ -234,9 +237,11 @@ class PyMW_Scheduler:
             if next_task is not None:
                 worker = self._interface.reserve_worker()
                 next_task._times["execute_time"] = time.time()
+                logging.info("Executing task"+str(next_task))
                 task_thread = threading.Thread(target=self._interface.execute_task, args=(next_task, worker))
                 task_thread.start()
             #state_lock.release()
+        logging.info("PyMW_Scheduler finished")
 
     def _exit(self):
         """Signals the scheduler thread to exit."""
@@ -245,7 +250,9 @@ class PyMW_Scheduler:
 
 class PyMW_Master:
     """Provides functions for users to submit tasks to the underlying interface."""
-    def __init__(self, interface=None, use_state_records=False):
+    def __init__(self, interface=None, use_state_records=False, loglevel=logging.CRITICAL):
+        logging.basicConfig(level=loglevel, format="%(asctime)s %(levelname)s %(message)s")
+
         if interface:
             self._interface = interface
         else:
