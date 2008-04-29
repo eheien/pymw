@@ -1,10 +1,10 @@
 import pymw
-import base_interface
+import interfaces.base_interface
 import unittest
 
 class TestPyMW(unittest.TestCase):
     def setUp(self):
-        self.interface = base_interface.BaseSystemInterface()
+        self.interface = interfaces.base_interface.BaseSystemInterface()
         self.pymw_master = pymw.PyMW_Master(self.interface)
     
     def testGetResultNoSubmit(self):
@@ -21,7 +21,7 @@ class TestPyMW(unittest.TestCase):
         self.assertRaises(TypeError, self.pymw_master.submit_task, executable=1)
 
     def testBadPython(self):
-        interface = base_interface.BaseSystemInterface(python_loc="/usr/local/dead_parrot/python")
+        interface = interfaces.base_interface.BaseSystemInterface(python_loc="/usr/local/dead_parrot/python")
         pymw_master = pymw.PyMW_Master(interface)
         task = pymw_master.submit_task(executable='worker.py', input_data=1)
         self.assertRaises(pymw.InterfaceException, pymw_master.get_result, task)
@@ -42,7 +42,7 @@ class TestPyMW(unittest.TestCase):
 
 class TestPyMWStateSaveRestore(unittest.TestCase):
     def setUp(self):
-        self.interface = base_interface.BaseSystemInterface()
+        self.interface = interfaces.base_interface.BaseSystemInterface()
         self.pymw_master = pymw.PyMW_Master(self.interface, use_state_records=True)
     
     def testGetResults(self):

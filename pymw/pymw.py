@@ -11,7 +11,7 @@ import time
 import os
 import types
 import atexit
-import base_interface
+import interfaces.base_interface
 import logging
 
 # THINK ABOUT THIS
@@ -147,7 +147,7 @@ class PyMW_Task:
     def __str__(self):
         return self._task_name
     
-    def state_data(self):
+    def _state_data(self):
         return {"task_name": self._task_name,
                 "executable": self._executable,
                 "input_arg": self._input_arg,
@@ -256,7 +256,7 @@ class PyMW_Master:
         if interface:
             self._interface = interface
         else:
-            self._interface = base_interface.BaseSystemInterface()
+            self._interface = interfaces.base_interface.BaseSystemInterface()
         
         self._state_file_name = "pymw_state.dat"
         self._state_file_tmp = "pymw_state_tmp.dat"
@@ -289,7 +289,7 @@ class PyMW_Master:
         pymw_state = {}
         
         pymw_state["interface_state"] = self._interface._save_state()
-        pymw_state["tasks"] = [task.state_data() for task in self._submitted_tasks]
+        pymw_state["tasks"] = [task._state_data() for task in self._submitted_tasks]
         pymw_state["queued_task_list"] = [str(task) for task in self._queued_tasks]
 
         try:

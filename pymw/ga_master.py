@@ -1,7 +1,7 @@
 from pymw import *
-from base_interface import *
-from boinc_interface import *
-from score_interface import *
+from interfaces.base_interface import *
+from interfaces.boinc_interface import *
+from interfaces.score_interface import *
 from random import *
 import time
 
