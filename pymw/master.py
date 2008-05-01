@@ -1,10 +1,10 @@
 #!/usr/bin/env python
 
 from pymw import *
-import pymw.interfaces.score_interface
+import pymw.interfaces.mpi_interface
 from time import *
 
-interface = pymw.interfaces.score_interface.SCoreSystemInterface(num_workers=4)
+interface = pymw.interfaces.mpi_interface.MPIInterface(num_workers=4)
 pymw_master = pymw.pymw.PyMW_Master(interface=interface)
 
 total = 0

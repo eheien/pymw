@@ -21,6 +21,7 @@ def worker_control_thread(worker_num, task_sem, task_lock, task_list):
 
 def master():
 	finished = False
+	print mpi.size
 	task_list = []
 	task_sem = threading.Semaphore(0)
 	task_lock = threading.Lock()

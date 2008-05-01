@@ -4,7 +4,7 @@ from random import *
 import time
 
 for nw in [1, 2, 3, 4, 6, 8, 12, 16]:
-        interface = pymw.interfaces.score_interface.SCoreSystemInterface(num_workers=4)
+        interface = pymw.interfaces.score_interface.MPIInterface(num_workers=4)
         pymw_master = pymw.PyMW_Master(interface=interface)
 
         start = time.time()
