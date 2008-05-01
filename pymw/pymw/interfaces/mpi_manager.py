@@ -10,12 +10,11 @@ if mpi.rank == 0:
 	print mpi.size-1
 	while not finished:
 		try:
-			cmd = raw_input()
-			elems = cmd.split()
-			target = int(elems[0])%mpi.size
-			msg = b[1]
+			cmd = raw_input().split()
+			target = int(cmd[0])%(mpi.size-1)+1
+			msg = cmd[1]
 			mpi.send(msg, target)
-		except EOFError:
+		except:
 			for i in range(mpi.size):
 				mpi.send(None, i)
 			finished = True

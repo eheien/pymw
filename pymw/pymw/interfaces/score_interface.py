@@ -11,7 +11,7 @@ class _Worker:
 		self._host_name = host_name
 	
 class SCoreSystemInterface:
-	def __init__(self, num_workers=4):
+	def __init__(self, num_workers=4, mpirun_loc="mpirun"):
 		# Use the scoregroups and scorehosts commands to find all hosts accessible from this machine
 		groups_check = subprocess.Popen(args=["scoregroups"],
 			stdout=subprocess.PIPE, stderr=subprocess.PIPE)
@@ -27,9 +27,8 @@ class SCoreSystemInterface:
 		self._worker_list = [_Worker(host) for host in host_set]
 		self._worker_list = self._worker_list[:num_workers]
 		self._count = 0
-		self._mpi_manager_process = subprocess.Popen(args=["mpirun", "-np", str(num_workers+1), "/home/myri-fs/e-heien/local/bin/pyMPI", "/home/myri-fs/e-heien/osaka/pymw/pymw/pymw/interfaces/mpi_manager.py"], stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-		booga = self._mpi_manager_process.stdout.readline()
-		print booga
+		self._mpi_manager_process = subprocess.Popen(args=[mpirun_loc, "-np", str(num_workers+1), "/home/myri-fs/e-heien/local/bin/pyMPI", "/home/myri-fs/e-heien/osaka/pymw/pymw/pymw/interfaces/mpi_manager.py"], stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+		num_workers = int(self._mpi_manager_process.stdout.readline())
 	
 	def _save_state(self):
 		print "saving state"
@@ -38,7 +37,8 @@ class SCoreSystemInterface:
 		print "restoring state"
 	
 	def reserve_worker(self):
-		self._count = (self._count+1)%len(self._worker_list)
+		#self._count = (self._count+1)%len(self._worker_list)
+		self._count = self._count+1
 		return self._count
 		#return self._worker_list[self._count]
 	
@@ -47,11 +47,9 @@ class SCoreSystemInterface:
 			print "SCore not yet supported on Windows"
 		else:
 			self._mpi_manager_process.stdin.write(str(worker)+str(task))
-			#task_process = subprocess.Popen(args=["mpirun", "-np", "1", "-machinefile", hostfilename,
-				#"/home/myri-fs/e-heien/local/bin/pyMPI", task._executable, task._input_arg, task._output_arg], stderr=subprocess.PIPE)
 			#task_process.wait()
 		
-		#task.task_finished()
+		task.task_finished(pymw.pymw.InterfaceException("Boogaly"))
 
 	def get_status(self):
 		return {}
