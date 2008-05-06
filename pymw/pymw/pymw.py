@@ -13,16 +13,12 @@ import types
 import atexit
 import interfaces.base_interface
 import logging
+import shelve
 
 # THINK ABOUT THIS
 # New way of handling finished tasks:
 # When a task is finished, it is put on the finished_task list
 # This allows set task checks with wait_contain
-"""The state lock ensures that a consistent state snapshot
-will be recorded.  Currently, this code operates under the
-assumption that there will be at most 2 threads touching
-the state - the scheduler and the main thread. (not quite true)"""
-state_lock = threading.Lock()
 
 class _SyncListIter:
     def __init__(self, list_obj):
@@ -158,8 +154,6 @@ class PyMW_Task:
         """This must be called by the interface class when the
         task finishes execution.  The result of execution should
         be in the file indicated by output_arg."""
-        #global state_lock
-        #state_lock.acquire()
 
         if task_err:
             self._error = task_err
@@ -178,8 +172,6 @@ class PyMW_Task:
         logging.info("Task "+str(self)+" finished")
         self._times["finish_time"] = time.time()
         self._finish_event.set()
-        
-        #state_lock.release()
 
     def is_task_finished(self, wait):
         """Checks if the task is finished, and optionally waits for it to finish."""
@@ -228,10 +220,6 @@ class PyMW_Scheduler:
     def _scheduler(self):
         """Waits for submissions to the task list, then submits them to the interface."""
         while not self._finished:
-            # Figure out how to fix this
-            # Currently, this lock prevents tasks from finishing
-            #global state_lock
-            #state_lock.acquire()
             next_task = self._task_list.wait_pop() # Wait for a task submission
             if next_task is not None:
                 worker = self._interface.reserve_worker()
@@ -239,7 +227,6 @@ class PyMW_Scheduler:
                 logging.info("Executing task"+str(next_task))
                 task_thread = threading.Thread(target=self._interface.execute_task, args=(next_task, worker))
                 task_thread.start()
-            #state_lock.release()
         logging.info("PyMW_Scheduler finished")
 
     def _exit(self):
@@ -257,11 +244,14 @@ class PyMW_Master:
         else:
             self._interface = interfaces.base_interface.BaseSystemInterface()
         
-        self._state_file_name = "pymw_state.dat"
-        self._state_file_tmp = "pymw_state_tmp.dat"
         self._submitted_tasks = _SyncList()
         self._queued_tasks = _SyncList()
         self._use_state_records = use_state_records
+        if self._use_state_records:
+            self._state_shelve = shelve.open("pymw_state.dat")
+        else:
+            self._state_shelve = None
+        
         self._task_dir_name = "tasks"
         self._cur_task_num = 0
 
@@ -273,65 +263,8 @@ class PyMW_Master:
             #    raise
             pass
 
-        # Restore state before starting scheduler
-        self._restore_state()
         self._scheduler = PyMW_Scheduler(self._queued_tasks, self._interface)
         atexit.register(self._cleanup)
-    
-    def _save_state(self):
-        """Save the current state of the computation to a record file.
-        This includes the state of the interface."""
-        if not self._use_state_records: return
-        
-        global state_lock
-        state_lock.acquire()
-        pymw_state = {}
-        
-        pymw_state["interface_state"] = self._interface._save_state()
-        pymw_state["tasks"] = [task._state_data() for task in self._submitted_tasks]
-        pymw_state["queued_task_list"] = [str(task) for task in self._queued_tasks]
-
-        try:
-            state_file = open(self._state_file_tmp, 'w')
-            
-            try:
-                cPickle.Pickler(state_file).dump(pymw_state)
-            except:
-                print "Pickler error"
-            state_file.close()
-            os.rename(self._state_file_tmp, self._state_file_name)
-        except OSError:
-            pass
-        state_lock.release()
-        
-    def _restore_state(self):
-        """Restore the previous state of a computation from a record file.
-        This should only be called at the beginning of a program."""
-        if not self._use_state_records: return
-        
-        try:
-            state_file = open(self._state_file_name, 'r')
-        
-        except IOError:
-            return
-        except OSError:
-            return
-
-        pymw_state = cPickle.Unpickler(state_file).load()
-        for task in pymw_state["tasks"]:
-            new_task = PyMW_Task(task["task_name"], task["executable"], input_arg=task["input_arg"],
-                                 output_arg=task["output_arg"], times=task["times"])
-            if task["finished"] is True:
-                new_task.task_finished(task_err=None)
-            self._submitted_tasks.append(new_task)
-        
-        for task in self._submitted_tasks:
-            for queue_task_name in pymw_state["queued_task_list"]:
-                if str(task) is queue_task_name:
-                    self._queued_tasks.append(task)
-        
-        self._interface._restore_state(pymw_state["interface_state"])
-        state_file.close()
     
     def submit_task(self, executable, input_data=None, new_task_name=None):
         """Creates and submits a task to the internal list for execution.
@@ -348,13 +281,12 @@ class PyMW_Master:
         if self._use_state_records:
             for task in self._submitted_tasks:
                 if str(task) == task_name:
-                    #print "Found task", task_name
                     return task
         
         new_task = PyMW_Task(task_name, executable, input_data=input_data, file_loc=self._task_dir_name)
         self._submitted_tasks.append(new_task)
         self._queued_tasks.append(new_task)
-        self._save_state()
+        #self._save_state()
         return new_task
     
     def get_result(self, task=None, wait=True):
@@ -373,7 +305,7 @@ class PyMW_Master:
         if task._error:
             raise task._error
         
-        self._save_state()              # save state whenever a task finishes
+        #self._save_state()              # save state whenever a task finishes
         return task, task._output_data
     
     def get_status(self):
@@ -382,7 +314,10 @@ class PyMW_Master:
         return status
 
     def _cleanup(self):
-        self._interface._cleanup()
+        try:
+            self._interface._cleanup()
+        except AttributeError:
+            pass
         
         for task in self._submitted_tasks:
             task.cleanup()
