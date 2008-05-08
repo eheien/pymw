@@ -73,18 +73,24 @@ def worker_control_thread(worker_num, task_sem, task_lock, task_list, transport)
 		transport.send(next_task[0])
 
 def master():
-	finished = False
-	transport = SocketTransport()
-	transport._connect("0.0.0.0", 43194)
+	try:
+		transport = SocketTransport()
+		transport._connect("0.0.0.0", 43194)
+	except:
+		for worker_num in range(1,mpi.size):
+			mpi.send(None, worker_num)
+		raise
+
 	task_list = []
 	task_sem = threading.Semaphore(0)
 	task_lock = threading.Lock()
 	control_threads = [threading.Thread(target=worker_control_thread, args=(worker_num, task_sem, task_lock, task_list, transport)) for worker_num in range(1, mpi.size)]
+    #logging.info("Started"+str(len(control_threads))+"worker threads")
 	print "Started", str(len(control_threads)), "worker threads"
 	for c_thread in control_threads:
 		c_thread.start()
 
-	while not finished:
+	while True:
 		try:
 			cmd = transport.recv()
 			task_lock.acquire()
@@ -92,21 +98,17 @@ def master():
 			task_lock.release()
 			task_sem.release()
 		except RuntimeError:
-			print "Sending quit signal to all workers"
-			finished = True
 			for c_thread in control_threads:
 				task_list.append(None)
 				task_sem.release()
+			return
 
 def worker():
-	finished = False
-	while not finished:
+	while True:
 		msg, status = mpi.recv()
-		if msg is None:
-			finished = True
-		else:
-			retval = subprocess.call(["python", msg[1], msg[2], msg[3]])
-			mpi.send("done", 0)
+		if msg is None: return
+		retval = subprocess.call(["python", msg[1], msg[2], msg[3]])
+		mpi.send("done", 0)
 
 if mpi.rank == 0: master()
 else: worker()

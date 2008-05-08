@@ -72,17 +72,19 @@ class MPIInterface:
 		try:
 			self.socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
 			self.socket.bind((self.host, self.port))
-			self.socket.listen(5)
+			self.socket.listen(1)
 		except socket.error:
 			logging.error("Cannot create socket with port " + str(self.port)
 					+ " (port is already in use)")
 
 		self._mpi_manager_process = subprocess.Popen(args=[mpirun_loc, "-np", str(num_workers+1), "/Users/eheien/Desktop/pyMPI-2.5b0/pyMPI", 
 														   "/Users/eheien/Documents/osaka_dev/pymw/pymw/interfaces/mpi_manager.py"],
-														   stdin=None, stdout=None, stderr=None)#, stderr=subprocess.PIPE)
-		#accept connections from outside
+														   stdin=None, stdout=None, stderr=None)#stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+		# accept connection from manager process
+		self.socket.settimeout(5)
 		(csocket, address) = self.socket.accept()
 
+		csocket.setblocking(True)
 		self.csocket = SocketTransport(csocket)
 		self.task_dict = {}
 		task_finish_thread = threading.Thread(target=self._get_finished_tasks)
