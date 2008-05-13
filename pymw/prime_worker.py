@@ -21,13 +21,13 @@ def prime_test(n):
     for k in range(50):
         a = randint(1, n-1)
         p = a
-        for i in xrange(d-1):
+        for i in xrange(int(d)-1):
             p = (p * a) % n
         if p != 1:
             maybe_prime = False
             for r in xrange(s):
                 q = a
-                for i in xrange(int(pow(2,r))*d-1):
+                for i in xrange(int(pow(2,r)*d)-1):
                     q = (q * a) % n
                 if q == n-1:
                     maybe_prime = True

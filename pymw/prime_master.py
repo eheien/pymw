@@ -1,29 +1,36 @@
 from pymw import *
 from math import *
+import pymw.interfaces.mpi_interface
+import pymw.interfaces.base_interface
 import time
+import sys
 
-for n_workers in [1, 2, 3, 4, 6, 8, 12, 16]:
-        #interface = pymw.interfaces.base_interface.BaseSystemInterface(num_workers=n_workers)
-        #interface = pymw.interfaces.boinc_interface.BOINCInterface(project_home="/var/lib/boinc/szdgr/project")
-        interface = pymw.interfaces.score_interface.MPIInterface(num_workers=4)
-        pymw_master = pymw.PyMW_Master(interface=interface)
+n_workers = int(sys.argv[1])
 
-        max_val = 1000
-        task_size = 5
-        num_tasks = max_val/task_size
+init_start = time.time()
+#interface = pymw.interfaces.base_interface.BaseSystemInterface(num_workers=n_workers)
+#interface = pymw.interfaces.boinc_interface.BOINCInterface(project_home="/var/lib/boinc/szdgr/project")
+interface = pymw.interfaces.mpi_interface.MPIInterface(num_workers=n_workers)
+pymw_master = pymw.pymw.PyMW_Master(interface=interface)
 
-        start = time.time()
+max_val = 1000
+task_size = 5
+num_tasks = max_val/task_size
 
-        primes = []
+start = time.time()
 
-        in_data = [[(task_size*i)+1, task_size*(i+1)] for i in range(num_tasks)]
-        tasks = [pymw_master.submit_task('prime_worker.py', input_data=data) for data in in_data]
+primes = []
 
-        for task in tasks:
-                res_task, res = pymw_master.get_result(task)
-                primes.extend(res)
-        end = time.time()
+in_data = [[(task_size*i)+1, task_size*(i+1)] for i in range(num_tasks)]
+tasks = [pymw_master.submit_task('prime_worker.py', input_data=data) for data in in_data]
 
-        #print primes
+for task in tasks:
+	res_task, res = pymw_master.get_result(task)
+	primes.extend(res)
+end = time.time()
 
-        print "Total time:", str(end-start)
+#print primes
+
+print "Number of workers:", str(n_workers), "Non-init time:", str(end-start), "Total time:", str(end-init_start)
+exit()
+
