@@ -66,9 +66,10 @@ class SocketTransport():
 
 class MPIInterface:
 	def __init__(self, num_workers=1, mpirun_loc="mpirun"):
+		if num_workers%2: num_workers -= 1
 		self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-		self.host = "0.0.0.0"
-		self.port = 43194
+		self.host = socket.gethostbyname(socket.gethostname())
+		self.port = 43192
 		try:
 			self.socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
 			self.socket.bind((self.host, self.port))
@@ -77,11 +78,11 @@ class MPIInterface:
 			logging.error("Cannot create socket with port " + str(self.port)
 					+ " (port is already in use)")
 
-		self._mpi_manager_process = subprocess.Popen(args=[mpirun_loc, "-np", str(num_workers+1), "/Users/eheien/Desktop/pyMPI-2.5b0/pyMPI", 
-														   "/Users/eheien/Documents/osaka_dev/pymw/pymw/interfaces/mpi_manager.py"],
+		self._mpi_manager_process = subprocess.Popen(args=[mpirun_loc, "-np", str(num_workers), "/home/myri-fs/e-heien/local/bin/pyMPI",
+														   "/home/myri-fs/e-heien/osaka/pymw/pymw/pymw/interfaces/mpi_manager.py", self.host, str(self.port)],
 														   stdin=None, stdout=None, stderr=None)#stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
 		# accept connection from manager process
-		self.socket.settimeout(5)
+		self.socket.settimeout(18)
 		(csocket, address) = self.socket.accept()
 
 		csocket.setblocking(True)
@@ -100,11 +101,14 @@ class MPIInterface:
 		return None
 	
 	def _get_finished_tasks(self):
-		for i in range(10):
-			task_name = self.csocket.recv()
-			#print "Finished task", repr(task_name)
-			task = self.task_dict[task_name]
-			task.task_finished()
+		try:
+			while True:
+				task_name = self.csocket.recv()
+				#print "Finished task", repr(task_name)
+				task = self.task_dict[task_name]
+				task.task_finished()
+		except RuntimeError:
+			return
 
 	def execute_task(self, task, worker):
 		#print "Submitted task", str(task)
@@ -113,3 +117,6 @@ class MPIInterface:
 
 	def get_status(self):
 		return {}
+
+	def _cleanup(self):
+		self.csocket.close()
