@@ -13,15 +13,15 @@ init_start = time.time()
 interface = pymw.interfaces.mpi_interface.MPIInterface(num_workers=n_workers)
 pymw_master = pymw.pymw.PyMW_Master(interface=interface)
 
-max_val = 50
-task_size = 2
+max_val = 10000
+task_size = 5
 num_tasks = max_val/task_size
 
 start = time.time()
 
 primes = []
 
-in_data = [[(task_size*i)+1, task_size*(i+1)] for i in range(num_tasks)]
+in_data = [[i, i+task_size] for i in range(1, max_val+1, task_size)]
 tasks = [pymw_master.submit_task('prime_worker.py', input_data=data) for data in in_data]
 
 for task in tasks:
@@ -29,7 +29,7 @@ for task in tasks:
 	primes.extend(res)
 end = time.time()
 
-#print primes
+print primes[-5:]
 
 print "Number of workers:", str(n_workers), "Non-init time:", str(end-start), "Total time:", str(end-init_start)
 exit()
