@@ -13,8 +13,8 @@ init_start = time.time()
 interface = pymw.interfaces.mpi_interface.MPIInterface(num_workers=n_workers)
 pymw_master = pymw.pymw.PyMW_Master(interface=interface)
 
-max_val = 1000
-task_size = 5
+max_val = 50
+task_size = 2
 num_tasks = max_val/task_size
 
 start = time.time()

@@ -7,87 +7,59 @@ import socket
 import logging
 import struct
 
-class SocketTransport():
-	def __init__(self, socket1=None):
-		if socket1:
-			self.socket = socket1
-		else:
-			self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-		self.scache = {}
+def send(pymw_socket, data):
+	size = struct.pack("!Q", len(data))
+	pymw_socket.sendall(size)
+	pymw_socket.sendall(data)
 
-	def send(self, data):
-		size = struct.pack("!Q", len(data))
-		t_size = struct.calcsize("!Q")
-		s_size = 0L
-		while s_size < t_size:
-			p_size = self.socket.send(size[s_size:])
-			if p_size == 0:
-				raise RuntimeError("Socket connection is broken")
-			s_size += p_size
+def recv(pymw_socket):
+	e_size = struct.calcsize("!Q")
+	r_size = 0
+	data = ""
+	while r_size < e_size:
+		msg = pymw_socket.recv(e_size-r_size)
+		if msg == "":
+			raise RuntimeError("Socket connection is broken")
+		r_size += len(msg)
+		data += msg
+	e_size = struct.unpack("!Q", data)[0]
 
-		t_size = len(data)
-		s_size = 0L
-		while s_size < t_size:
-			p_size = self.socket.send(data[s_size:])
-			if p_size == 0:
-				raise RuntimeError("Socket connection is broken")
-			s_size += p_size
-
-	def recv(self):
-		e_size = struct.calcsize("!Q")
-		r_size = 0
-		data = ""
-		while r_size < e_size:
-			msg = self.socket.recv(e_size-r_size)
-			if msg == "":
-				raise RuntimeError("Socket connection is broken")
-			r_size += len(msg)
-			data += msg
-		e_size = struct.unpack("!Q", data)[0]
-
-		r_size = 0
-		data = ""
-		while r_size < e_size:
-			msg = self.socket.recv(e_size-r_size)
-			if msg == "":
-				raise RuntimeError("Socket connection is broken")
-			r_size += len(msg)
-			data += msg
-		return data
-
-	def close(self):
-		self.socket.close()
-
-	def _connect(self, host, port):
-		self.socket.connect((host, port))
-
-	def accept(self):
-		return csocket
+	r_size = 0
+	data = ""
+	while r_size < e_size:
+		msg = pymw_socket.recv(e_size-r_size)
+		if msg == "":
+			raise RuntimeError("Socket connection is broken")
+		r_size += len(msg)
+		data += msg
+	return data
 
 class MPIInterface:
 	def __init__(self, num_workers=1, mpirun_loc="mpirun"):
 		if num_workers%2: num_workers -= 1
+
 		self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 		self.host = socket.gethostbyname(socket.gethostname())
 		self.port = 43192
-		try:
-			self.socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-			self.socket.bind((self.host, self.port))
-			self.socket.listen(1)
-		except socket.error:
-			logging.error("Cannot create socket with port " + str(self.port)
-					+ " (port is already in use)")
+		self.socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+		self.socket.bind((self.host, self.port))
+		self.socket.listen(1)
 
-		self._mpi_manager_process = subprocess.Popen(args=[mpirun_loc, "-np", str(num_workers), "/home/myri-fs/e-heien/local/bin/pyMPI",
-														   "/home/myri-fs/e-heien/osaka/pymw/pymw/pymw/interfaces/mpi_manager.py", self.host, str(self.port)],
-														   stdin=None, stdout=None, stderr=None)#stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+		self._manager_process = subprocess.Popen(args=[mpirun_loc, "-np", str(num_workers),
+			"/home/myri-fs/e-heien/local/bin/pyMPI",
+			"/home/myri-fs/e-heien/osaka/pymw/pymw/interfaces/mpi_manager.py",
+			self.host, str(self.port)],
+			stdin=None, stdout=None, stderr=None)
+			#stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
 		# accept connection from manager process
 		self.socket.settimeout(18)
 		(csocket, address) = self.socket.accept()
+		self.csocket = csocket
 
-		csocket.setblocking(True)
-		self.csocket = SocketTransport(csocket)
+		self.csocket.setblocking(True)
+		#self.worker_count = recv(self.csocket)
 		self.task_dict = {}
+		self.mpi_error = None
 		task_finish_thread = threading.Thread(target=self._get_finished_tasks)
 		task_finish_thread.start()
 	
@@ -103,20 +75,40 @@ class MPIInterface:
 	def _get_finished_tasks(self):
 		try:
 			while True:
-				task_name = self.csocket.recv()
-				#print "Finished task", repr(task_name)
+				task_name = recv(self.csocket)
 				task = self.task_dict[task_name]
 				task.task_finished()
-		except RuntimeError:
+		except KeyError, e:
+			self.mpi_error = e
+			return
+		except:
+			error_msg = self._manager_process.stderr.readlines()
+			full_msg = ""
+			for line in error_msg:
+				full_msg += line
+			self.mpi_error = Exception(full_msg)
 			return
 
 	def execute_task(self, task, worker):
-		#print "Submitted task", str(task)
+		if self.mpi_error:
+			task.task_finished(self.mpi_error)
+		#try:
 		self.task_dict[str(task)] = task
-		self.csocket.send(str(task)+" "+task._executable+" "+task._input_arg+" "+task._output_arg)
+		send(self.csocket, str(task)+" "+task._executable+" "+task._input_arg+" "+task._output_arg)
+		#except:
+		#	if self._manager_process.stderr:
+		#		error_msg = self._manager_process.stderr.readlines()
+		#	else:
+		#		error_msg = [""]
+		#	full_msg = ""
+		#	for line in error_msg:
+		#		full_msg += line
+		#	self.mpi_error = Exception(full_msg)
+		#	task.task_finished(self.mpi_error)
 
 	def get_status(self):
 		return {}
 
 	def _cleanup(self):
 		self.csocket.close()
+

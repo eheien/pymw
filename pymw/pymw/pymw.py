@@ -59,11 +59,6 @@ class _SyncList:
         self._sem.release()
         self._lock.release()
     
-    def release(self):
-        """Releases the semaphore without adding an item.
-        Used only to wake threads that need to exit.  Other uses can cause undefined behavior."""
-        self._sem.release()
-
     def wait_pop(self):
         """Waits for an item to appear in the list, and pops it off."""
         self._sem.acquire(blocking=True)
@@ -232,7 +227,7 @@ class PyMW_Scheduler:
     def _exit(self):
         """Signals the scheduler thread to exit."""
         self._finished = True
-        self._task_list.release()
+        self._task_list.append(None)
 
 class PyMW_Master:
     """Provides functions for users to submit tasks to the underlying interface."""
@@ -303,9 +298,9 @@ class PyMW_Master:
             return None, None
 
         if task._error:
+            self._scheduler._exit()
             raise task._error
         
-        #self._save_state()              # save state whenever a task finishes
         return task, task._output_data
     
     def get_status(self):
@@ -328,3 +323,4 @@ class PyMW_Master:
             os.rmdir(self._task_dir_name)
         except OSError:
             pass
+
