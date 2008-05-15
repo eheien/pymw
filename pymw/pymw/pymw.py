@@ -14,6 +14,7 @@ import atexit
 import interfaces.base_interface
 import logging
 import shelve
+import decimal
 
 # THINK ABOUT THIS
 # New way of handling finished tasks:
