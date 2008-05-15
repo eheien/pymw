@@ -14,12 +14,16 @@ def sd_vals(i):
 # Miller-Rabin primality test
 def prime_test(n):
     s, d = sd_vals(n)
+    k = 50
     if n == 1: return False
-    num_samples = min(n-2, 50)
-    a_vals = sample(xrange(1, n), int(num_samples)) # get k random values (no repeats)
-    for a_int in a_vals:
-        a = Decimal(a_int)
-        p = pow(a, d, n) # p = a^d % n
+    #num_samples = min(n-2, 50)
+    #if n-2 < 1000: a_vals = sample(range(1, n), n-2) # get k random values (no repeats)
+    for i in range(k):
+        rand_val = Decimal(str(random()))*Decimal(n-1)
+        a = rand_val.to_integral()
+        if a < 1: a = 1
+        if a > n-1: a = n-1
+        p = pow(Decimal(a), d, n) # p = a^d % n
         if p != 1:
             maybe_prime = False
             for r in xrange(s):

@@ -52,7 +52,7 @@ class MPIInterface:
 			stdin=None, stdout=None, stderr=None)
 			#stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
 		# accept connection from manager process
-		self.socket.settimeout(18)
+		self.socket.settimeout(30)
 		(csocket, address) = self.socket.accept()
 		self.csocket = csocket
 
