@@ -2,7 +2,7 @@
 """Provide a BOINC interface for master worker computing with PyMW.
 """
 
-__author__ = "Adam Kornafeld"
+__author__ = "Adam Kornafeld <kadam@sztaki.hu>"
 __date__ = "10 April 2008"
 
 import pymw
@@ -30,8 +30,8 @@ class BOINCInterface:
         self._project_home = project_home
         self._project_download = project_home + "/download/"
         self._project_templates = project_home + "/templates/"
-        self._boinc_wu_template = open("boinc_wu_template.xml").readlines()
-        self._boinc_result_template = open("boinc_result_template.xml").readlines()
+        self._boinc_wu_template = open("pymw/interfaces/boinc_wu_template.xml").readlines()
+        self._boinc_result_template = open("pymw/interfaces/boinc_result_template.xml").readlines()
         self._cwd = os.getcwd()
     
     def reserve_worker(self):
@@ -40,6 +40,7 @@ class BOINCInterface:
     def execute_task(self, task, worker):
         in_file = task._input_arg.rpartition('/')[2]
         out_file = task._output_arg.rpartition('/')[2]
+	
         # Get input destination
         cmd = self._project_home + "/bin/dir_hier_path " + in_file
         in_path = os.popen(cmd, "r").read().strip()
@@ -57,7 +58,7 @@ class BOINCInterface:
             return
             
         # Create XML template for the wu
-        wu_template = "pymw_wu_" + str(task._input_data) + ".xml"
+        wu_template = "pymw_wu_" + str(task._task_name) + ".xml"
         dest = self._project_templates + wu_template
         boinc_wu_template = list(self._boinc_wu_template)
         for i in range(len(boinc_wu_template)):
@@ -70,16 +71,16 @@ class BOINCInterface:
         open(dest, "w").writelines(boinc_wu_template)
         
         # Create XML template for the result
-        result_template = "pymw_result_" + str(task._input_data) + ".xml"
+        result_template = "pymw_result_" + str(task._task_name) + ".xml"
         dest = self._project_templates + result_template
         boinc_result_template = list(self._boinc_result_template)
         for i in range(len(boinc_result_template)):
             if re.search("<PYMW_OUTPUT/>", boinc_result_template[i]):
                 boinc_result_template[i] = boinc_result_template[i].replace("<PYMW_OUTPUT/>", out_file)
         open(dest, "w").writelines(boinc_result_template)
-        
+	
         # Call create_work
-        cmd =  "create_work -appname pymw -wu_name pymw_" +  str(task._input_data)
+        cmd =  "create_work -appname pymw -wu_name pymw_" +  str(task._task_name)
         cmd += " -wu_template templates/" +  wu_template
         cmd += " -result_template templates/" + result_template 
         cmd +=  " " + task._executable + " "  + in_file
