@@ -67,7 +67,7 @@ class BOINCInterface:
             if re.search("<PYMW_INPUT/>", boinc_wu_template[i]):
                 boinc_wu_template[i] = boinc_wu_template[i].replace("<PYMW_INPUT/>", in_file)
             if re.search("<PYMW_CMDLINE/>", boinc_wu_template[i]):
-                boinc_wu_template[i] = boinc_wu_template[i].replace("<PYMW_CMDLINE/>", in_file + " " + out_file)
+                boinc_wu_template[i] = boinc_wu_template[i].replace("<PYMW_CMDLINE/>", task._executable + " " + in_file + " " + out_file)
         open(dest, "w").writelines(boinc_wu_template)
         
         # Create XML template for the result
