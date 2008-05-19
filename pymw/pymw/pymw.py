@@ -282,7 +282,6 @@ class PyMW_Master:
         new_task = PyMW_Task(task_name, executable, input_data=input_data, file_loc=self._task_dir_name)
         self._submitted_tasks.append(new_task)
         self._queued_tasks.append(new_task)
-        #self._save_state()
         return new_task
     
     def get_result(self, task=None, wait=True):

@@ -30,7 +30,7 @@ class Worker:
 				os.kill(self._exec_process.pid, signal.SIGKILL)
 
 
-class BaseSystemInterface:
+class MulticoreInterface:
 	"""Provides a simple interface for single machine systems.
 	This can take advantage of multicore by starting multiple processes."""
 
@@ -43,12 +43,6 @@ class BaseSystemInterface:
 			w = Worker()
 			self._available_worker_list.append(w)
 			self._worker_list.append(w)
-	
-	def _save_state(self):
-		return None
-	
-	def _restore_state(self, old_state):
-		return
 	
 	def reserve_worker(self):
 		return self._available_worker_list.wait_pop()

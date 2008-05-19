@@ -1,6 +1,14 @@
+#!/usr/bin/env python
+"""Provide an MPI interface for master worker computing with PyMW.
+"""
+
+__author__ = "Eric Heien <e-heien@ist.osaka-u.ac.jp>"
+__date__ = "10 April 2008"
+
+
 import subprocess
 import threading
-import pymw
+import pymw.pymw
 import sys
 import os
 import socket
@@ -62,12 +70,6 @@ class MPIInterface:
 		self.mpi_error = None
 		task_finish_thread = threading.Thread(target=self._get_finished_tasks)
 		task_finish_thread.start()
-	
-	def _save_state(self):
-		print "saving state"
-	
-	def _restore_state(self):
-		print "restoring state"
 	
 	def reserve_worker(self):
 		return None
