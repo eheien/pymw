@@ -40,7 +40,6 @@ class _SyncList:
     """Encapsulates a list with atomic operations and semaphore abilities."""
     def __init__(self):
         self._lock = threading.Lock()
-        self._sem = threading.Semaphore(0)
         self._list = []
     
     def __len__(self):
@@ -57,12 +56,10 @@ class _SyncList:
         """Atomically appends an item to the list and increments the semaphore."""
         self._lock.acquire()
         self._list.append(item)
-        self._sem.release()
         self._lock.release()
     
-    def wait_pop(self):
-        """Waits for an item to appear in the list, and pops it off."""
-        self._sem.acquire(blocking=True)
+    def pop(self):
+        """Atomically pops an item off the list."""
         self._lock.acquire()
         try:
             item = self._list.pop()
@@ -196,29 +193,29 @@ class PyMW_Scheduler:
     """Takes tasks submitted by user and sends them to the master-worker interface.
     This is done in a separate thread to allow for asynchronous program execution."""
     def __init__(self, task_list, interface):
-        logging.info("PyMW_Scheduler started")
         self._task_list = task_list
         self._interface = interface
-        self._finished = False
-        _scheduler_thread = threading.Thread(target=self._scheduler)
-        _scheduler_thread.start()
+        self._running = False
+    
+    def _start_scheduler(self):
+        if not self._running:
+            logging.info("PyMW_Scheduler started")
+            _scheduler_thread = threading.Thread(target=self._scheduler)
+            self._running = True
+            _scheduler_thread.start()
     
     def _scheduler(self):
         """Waits for submissions to the task list, then submits them to the interface."""
-        while not self._finished:
-            next_task = self._task_list.wait_pop()
-            if next_task is not None:
-                worker = self._interface.reserve_worker()
-                next_task._times["execute_time"] = time.time()
-                logging.info("Executing task "+str(next_task))
-                task_thread = threading.Thread(target=self._interface.execute_task, args=(next_task, worker))
-                task_thread.start()
+        next_task = self._task_list.pop()
+        while next_task:
+            worker = self._interface.reserve_worker()
+            next_task._times["execute_time"] = time.time()
+            logging.info("Executing task "+str(next_task))
+            task_thread = threading.Thread(target=self._interface.execute_task, args=(next_task, worker))
+            task_thread.start()
+            next_task = self._task_list.pop()
         logging.info("PyMW_Scheduler finished")
-
-    def _exit(self):
-        """Signals the scheduler thread to exit."""
-        self._finished = True
-        self._task_list.append(None)
+        self._running = False
 
 class PyMW_Master:
     """Provides functions for users to submit tasks to the underlying interface."""
@@ -245,8 +242,8 @@ class PyMW_Master:
         try:
             os.mkdir(self._task_dir_name)
         except OSError, e:
-            if e.errno <> errno.EEXIST:
-                raise
+            #if e.errno <> errno.EEXIST:
+            #    raise
             pass
 
         self._scheduler = PyMW_Scheduler(self._queued_tasks, self._interface)
@@ -271,6 +268,8 @@ class PyMW_Master:
         new_task = PyMW_Task(task_name, executable, input_data=input_data, file_loc=self._task_dir_name)
         self._submitted_tasks.append(new_task)
         self._queued_tasks.append(new_task)
+        self._scheduler._start_scheduler()
+        
         return new_task
     
     def get_result(self, task=None, wait=True):
@@ -305,8 +304,6 @@ class PyMW_Master:
         
         for task in self._submitted_tasks:
             task.cleanup()
-        
-        self._scheduler._exit()
         
         try:
             os.rmdir(self._task_dir_name)

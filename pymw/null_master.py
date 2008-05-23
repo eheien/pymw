@@ -6,6 +6,7 @@ import pymw.interfaces.multicore
 import pymw.interfaces.mpi
 import pymw.interfaces.boinc
 import time
+import logging
 from optparse import OptionParser
 
 parser = OptionParser(usage="usage: %prog")
@@ -29,7 +30,7 @@ else:
 	print "Interface", options.interface, "unknown."
 	exit()
 
-pymw_master = pymw.pymw.PyMW_Master(interface=interface_obj)
+pymw_master = pymw.pymw.PyMW_Master(interface=interface_obj, loglevel=logging.INFO)
 
 post_init_time = time.time()
 tasks = [pymw_master.submit_task('null_worker.py', input_data=i) for i in range(num_t)]

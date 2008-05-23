@@ -11,6 +11,7 @@ import sys
 import ctypes
 import os
 import signal
+import threading
 
 """On worker restarting:
 Multicore systems cannot handle worker restarts - recording PIDs
@@ -29,7 +30,6 @@ class Worker:
 			else:
 				os.kill(self._exec_process.pid, signal.SIGKILL)
 
-
 class MulticoreInterface:
 	"""Provides a simple interface for single machine systems.
 	This can take advantage of multicore by starting multiple processes."""
@@ -39,13 +39,16 @@ class MulticoreInterface:
 		self._available_worker_list = pymw.pymw._SyncList()
 		self._worker_list = []
 		self._python_loc = python_loc
+		self._worker_sem = threading.Semaphore(0)
 		for worker_num in range(num_workers):
 			w = Worker()
 			self._available_worker_list.append(w)
 			self._worker_list.append(w)
+			self._worker_sem.release()
 	
 	def reserve_worker(self):
-		return self._available_worker_list.wait_pop()
+		self._worker_sem.acquire()
+		return self._available_worker_list.pop()
 	
 	def execute_task(self, task, worker):
 		try:
@@ -68,6 +71,7 @@ class MulticoreInterface:
 		worker._exec_process = None
 		task.task_finished(task_error)	# notify the task
 		self._available_worker_list.append(worker)	# rejoin the list of available workers
+		self._worker_sem.release()
 
 	def _cleanup(self):
 		for worker in self._worker_list:
