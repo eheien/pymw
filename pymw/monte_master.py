@@ -14,7 +14,7 @@ parser.add_option("-t", "--num_tests", dest="n_tests", default="1000000000", hel
 parser.add_option("-p", "--project_home", dest="p_home", default="", help="directory of the project (BOINC interface)", metavar="DIR")
 options, args = parser.parse_args()
 
-n_workers, n_tasks = int(options.n_workers), int(options.n_tests)
+n_workers, n_tests = int(options.n_workers), int(options.n_tests)
 
 start_time = time.time()
 
