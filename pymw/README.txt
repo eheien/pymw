@@ -1,0 +1,14 @@
+Notes about using PyMW:
+
+To try out the sample applications, execute the *_master.py files in Python.
+For example:
+
+user% python monte_master.py -t 1000
+3.148 0.00640734641021
+Number of Workers: 4
+Calculation time: 0.470422029495
+Total time: 0.471640825272
+
+Use the -h option to see a list of options for each program.
+
+Note: ga_master.py is currently not functional.
