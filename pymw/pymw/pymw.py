@@ -210,7 +210,7 @@ class PyMW_Scheduler:
             if next_task is not None:
                 worker = self._interface.reserve_worker()
                 next_task._times["execute_time"] = time.time()
-                logging.info("Executing task"+str(next_task))
+                logging.info("Executing task "+str(next_task))
                 task_thread = threading.Thread(target=self._interface.execute_task, args=(next_task, worker))
                 task_thread.start()
         logging.info("PyMW_Scheduler finished")
@@ -244,9 +244,9 @@ class PyMW_Master:
         # Make the directory for input/output files, if it doesn't already exist
         try:
             os.mkdir(self._task_dir_name)
-        except OSError, e: 
-            #if e.errno <> errno.EEXIST: 
-            #    raise
+        except OSError, e:
+            if e.errno <> errno.EEXIST:
+                raise
             pass
 
         self._scheduler = PyMW_Scheduler(self._queued_tasks, self._interface)
@@ -257,7 +257,6 @@ class PyMW_Master:
         Returns the created task for later use.
         executable can be either a filename (Python script) or a function."""
         
-        # If using restored state, check whether this task has been submitted before
         if not new_task_name:
             task_name = str(executable)+"_"+str(self._cur_task_num)
             self._cur_task_num += 1

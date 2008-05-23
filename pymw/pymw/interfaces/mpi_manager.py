@@ -82,6 +82,7 @@ def master():
 	except RuntimeError:
 		for i in range(1, mpi.size):
 			mpi.send(None, i)
+
 def worker():
 	while True:
 		msg, status = mpi.recv()
