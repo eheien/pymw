@@ -3,7 +3,7 @@ from random import *
 import time
 
 n_workers = 4
-interface = pymw.interfaces.base_interface.BaseSystemInterface(num_workers=n_workers)
+interface = pymw.interfaces.multicore_interface.MulticoreInterface(num_workers=n_workers)
 #interface = BOINCInterface(project_home="/var/lib/boinc/szdgr/project")
 #interface = SCoreSystemInterface(num_workers=4)
 pymw_master = pymw.PyMW_Master(interface=interface)

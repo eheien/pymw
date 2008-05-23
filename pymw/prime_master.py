@@ -1,14 +1,14 @@
 from pymw import *
 from math import *
 import pymw.interfaces.mpi_interface
-import pymw.interfaces.base_interface
+import pymw.interfaces.multicore_interface
 import time
 import sys
 
 n_workers = int(sys.argv[1])
 
 init_start = time.time()
-#interface = pymw.interfaces.base_interface.BaseSystemInterface(num_workers=n_workers)
+#interface = pymw.interfaces.multicore_interface.MulticoreInterface(num_workers=n_workers)
 #interface = pymw.interfaces.boinc_interface.BOINCInterface(project_home="/var/lib/boinc/szdgr/project")
 interface = pymw.interfaces.mpi_interface.MPIInterface(num_workers=n_workers)
 pymw_master = pymw.pymw.PyMW_Master(interface=interface)

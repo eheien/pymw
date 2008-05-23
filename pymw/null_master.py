@@ -16,7 +16,7 @@ if interface == "boinc":
 elif interface == "mpi":
 	interface_obj = pymw.interfaces.mpi_interface.MPIInterface(num_workers=num_w)
 elif interface == "multicore":
-	interface_obj = pymw.interfaces.base_interface.MulticoreInterface(num_workers=num_w)
+	interface_obj = pymw.interfaces.multicore_interface.MulticoreInterface(num_workers=num_w)
 else:
 	print "Interface", interface, "unknown."
 	exit()
