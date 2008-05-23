@@ -1,6 +1,6 @@
 import pymw
 import pymw.interfaces
-import pymw.interfaces.multicore_interface
+import pymw.interfaces.multicore
 import unittest
 
 class TestPyMW(unittest.TestCase):
@@ -26,7 +26,7 @@ class TestPyMW(unittest.TestCase):
 
     # Tests that using an invalid Python location returns an error
     def testBadPython(self):
-        interface = pymw.interfaces.multicore_interface.MulticoreInterface(python_loc="/usr/local/dead_parrot/python")
+        interface = pymw.interfaces.multicore.MulticoreInterface(python_loc="/usr/local/dead_parrot/python")
         pymw_master = pymw.pymw.PyMW_Master(interface)
         task = pymw_master.submit_task(executable='null_worker.py', input_data=1)
         self.assertRaises(pymw.pymw.InterfaceException, pymw_master.get_result, task)
@@ -49,7 +49,7 @@ class TestPyMW(unittest.TestCase):
 
 #class TestPyMWStateSaveRestore(unittest.TestCase):
 #    def setUp(self):
-#        self.interface = pymw.interfaces.multicore_interface.MulticoreInterface()
+#        self.interface = pymw.interfaces.multicore.MulticoreInterface()
 #        self.pymw_master = pymw.pymw.PyMW_Master(self.interface, use_state_records=True)
 #    
 #    def testGetResults(self):

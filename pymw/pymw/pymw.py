@@ -11,7 +11,7 @@ import time
 import os
 import types
 import atexit
-import interfaces.multicore_interface
+import interfaces.multicore
 import logging
 import shelve
 import decimal
@@ -228,7 +228,7 @@ class PyMW_Master:
         if interface:
             self._interface = interface
         else:
-            self._interface = interfaces.multicore_interface.MulticoreInterface()
+            self._interface = interfaces.multicore.MulticoreInterface()
         
         self._submitted_tasks = _SyncList()
         self._queued_tasks = _SyncList()

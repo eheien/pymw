@@ -2,9 +2,9 @@
 # null_master.py <interface> <num_workers/project_url> <num_tasks>
 
 import pymw
-import pymw.interfaces.multicore_interface
-import pymw.interfaces.mpi_interface
-import pymw.interfaces.boinc_interface
+import pymw.interfaces.multicore
+import pymw.interfaces.mpi
+import pymw.interfaces.boinc
 import time
 
 start_time = time.time()
@@ -12,11 +12,11 @@ interface = sys.argv[1]
 num_w = int(sys.argv[2])
 
 if interface == "boinc":
-	interface_obj = pymw.interfaces.boinc_interface.BOINCInterface(project_home=sys.argv[2])
+	interface_obj = pymw.interfaces.boinc.BOINCInterface(project_home=sys.argv[2])
 elif interface == "mpi":
-	interface_obj = pymw.interfaces.mpi_interface.MPIInterface(num_workers=num_w)
+	interface_obj = pymw.interfaces.mpi.MPIInterface(num_workers=num_w)
 elif interface == "multicore":
-	interface_obj = pymw.interfaces.multicore_interface.MulticoreInterface(num_workers=num_w)
+	interface_obj = pymw.interfaces.multicore.MulticoreInterface(num_workers=num_w)
 else:
 	print "Interface", interface, "unknown."
 	exit()

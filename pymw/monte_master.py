@@ -1,6 +1,6 @@
 from pymw import *
-import pymw.interfaces.mpi_interface
-#import pymw.interfaces.multicore_interface
+import pymw.interfaces.mpi
+#import pymw.interfaces.multicore
 from math import *
 from random import *
 import time
@@ -10,8 +10,8 @@ nw = int(sys.argv[1])
 
 start = time.time()
 
-interface = pymw.interfaces.mpi_interface.MPIInterface(num_workers=nw)
-#interface = pymw.interfaces.multicore_interface.MulticoreInterface(num_workers=nw-1)
+interface = pymw.interfaces.mpi.MPIInterface(num_workers=nw)
+#interface = pymw.interfaces.multicore.MulticoreInterface(num_workers=nw-1)
 pymw_master = pymw.pymw.PyMW_Master(interface=interface)
 
 post_init = time.time()
