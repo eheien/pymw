@@ -11,7 +11,7 @@ import time
 import os
 import types
 import atexit
-import interfaces.base_interface
+import interfaces.multicore_interface
 import logging
 import shelve
 import decimal
@@ -81,12 +81,14 @@ class _SyncList:
         else: return False
 
 class TaskException(Exception):
+    """Represents an exception caused by a task failure."""
     def __init__(self, value):
         self.param = value
     def __str__(self):
         return repr(self.param)
 
 class InterfaceException(Exception):
+    """Represents an exception caused by an interface failure."""
     def __init__(self, value, detail_str=None):
         self.param = value
         if detail_str:
@@ -98,7 +100,7 @@ class InterfaceException(Exception):
 
 class PyMW_Task:
     """Represents a task to be executed."""
-    def __init__(self, task_name, executable, input_data=None, input_arg=None, output_arg=None, times=None, file_loc="tasks"):
+    def __init__(self, task_name, executable, input_data=None, input_arg=None, output_arg=None, file_loc="tasks"):
         self._finish_event = threading.Event()
         
         # Make sure executable is valid
@@ -128,33 +130,22 @@ class PyMW_Task:
         input_data_file.close()
 
         # Task time bookkeeping
-        if times:
-            self._times = times
-        else:
-            self._times = {"submit_time": time.time(),
-                           "execute_time": 0,
-                           "finish_time": 0}
+        self._times = {"submit_time": time.time(), "execute_time": 0, "finish_time": 0}
 
     def __str__(self):
         return self._task_name
     
     def _state_data(self):
-        return {"task_name": self._task_name,
-                "executable": self._executable,
-                "input_arg": self._input_arg,
-                "output_arg": self._output_arg,
-                "times": self._times,
-                "finished": self._finish_event.isSet()}
+        return {"task_name": self._task_name, "executable": self._executable,
+                "input_arg": self._input_arg, "output_arg": self._output_arg,
+                "times": self._times, "finished": self._finish_event.isSet()}
     
     def task_finished(self, task_err=None):
         """This must be called by the interface class when the
         task finishes execution.  The result of execution should
         be in the file indicated by output_arg."""
 
-        if task_err:
-            self._error = task_err
-        else:
-            self._error = None
+        self._error = task_err
         
         try:
             output_data_file = open(self._output_arg, 'r')
@@ -212,11 +203,10 @@ class PyMW_Scheduler:
         _scheduler_thread = threading.Thread(target=self._scheduler)
         _scheduler_thread.start()
     
-    # Note: it is possible for two different Masters to assign tasks to the same worker
     def _scheduler(self):
         """Waits for submissions to the task list, then submits them to the interface."""
         while not self._finished:
-            next_task = self._task_list.wait_pop() # Wait for a task submission
+            next_task = self._task_list.wait_pop()
             if next_task is not None:
                 worker = self._interface.reserve_worker()
                 next_task._times["execute_time"] = time.time()
@@ -238,7 +228,7 @@ class PyMW_Master:
         if interface:
             self._interface = interface
         else:
-            self._interface = interfaces.base_interface.BaseSystemInterface()
+            self._interface = interfaces.multicore_interface.MulticoreInterface()
         
         self._submitted_tasks = _SyncList()
         self._queued_tasks = _SyncList()
