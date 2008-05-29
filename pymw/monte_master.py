@@ -1,3 +1,5 @@
+#!/usr/bin/env python
+
 import pymw
 import pymw.interfaces.multicore
 import pymw.interfaces.mpi
@@ -10,7 +12,7 @@ from math import *
 parser = OptionParser(usage="usage: %prog")
 parser.add_option("-i", "--interface", dest="interface", default="multicore", help="specify the interface (multicore/mpi/boinc)", metavar="INTERFACE")
 parser.add_option("-n", "--num_workers", dest="n_workers", default="4", help="number of workers", metavar="N")
-parser.add_option("-t", "--num_tests", dest="n_tests", default="1000000000", help="number of Monte Carlo tests to perform", metavar="N")
+parser.add_option("-t", "--num_tests", dest="n_tests", default="1000000", help="number of Monte Carlo tests to perform", metavar="N")
 parser.add_option("-p", "--project_home", dest="p_home", default="", help="directory of the project (BOINC interface)", metavar="DIR")
 options, args = parser.parse_args()
 

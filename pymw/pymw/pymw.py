@@ -15,67 +15,12 @@ import interfaces.multicore
 import logging
 import shelve
 import decimal
+import Queue
 
 # THINK ABOUT THIS
 # New way of handling finished tasks:
 # When a task is finished, it is put on the finished_task list
 # This allows set task checks with wait_contain
-
-class _SyncListIter:
-    def __init__(self, list_obj):
-        self._list_obj = list_obj
-        self._pos = 0
-    
-    def __iter__(self):
-        return self
-    
-    def next(self):
-        if self._pos >= len(self._list_obj):
-            raise StopIteration
-        next_obj = self._list_obj._list[self._pos]
-        self._pos = self._pos + 1
-        return next_obj
-    
-class _SyncList:
-    """Encapsulates a list with atomic operations and semaphore abilities."""
-    def __init__(self):
-        self._lock = threading.Lock()
-        self._list = []
-    
-    def __len__(self):
-        """Returns the length of the list."""
-        self._lock.acquire()
-        l_len = len(self._list)
-        self._lock.release()
-        return l_len
-    
-    def __iter__(self):
-        return _SyncListIter(self)
-    
-    def append(self, item):
-        """Atomically appends an item to the list and increments the semaphore."""
-        self._lock.acquire()
-        self._list.append(item)
-        self._lock.release()
-    
-    def pop(self):
-        """Atomically pops an item off the list."""
-        self._lock.acquire()
-        try:
-            item = self._list.pop()
-            return item
-        except:
-            return None
-        finally:
-            self._lock.release()
-
-    def contains(self, item):
-        """Checks if the list contains the specified item."""
-        self._lock.acquire()
-        n = self._list.count(item)
-        self._lock.release()
-        if n != 0: return True
-        else: return False
 
 class TaskException(Exception):
     """Represents an exception caused by a task failure."""
@@ -192,8 +137,8 @@ class PyMW_Task:
 class PyMW_Scheduler:
     """Takes tasks submitted by user and sends them to the master-worker interface.
     This is done in a separate thread to allow for asynchronous program execution."""
-    def __init__(self, task_list, interface):
-        self._task_list = task_list
+    def __init__(self, task_queue, interface):
+        self._task_queue = task_queue
         self._interface = interface
         self._running = False
     
@@ -206,16 +151,18 @@ class PyMW_Scheduler:
     
     def _scheduler(self):
         """Waits for submissions to the task list, then submits them to the interface."""
-        next_task = self._task_list.pop()
-        while next_task:
-            worker = self._interface.reserve_worker()
-            next_task._times["execute_time"] = time.time()
-            logging.info("Executing task "+str(next_task))
-            task_thread = threading.Thread(target=self._interface.execute_task, args=(next_task, worker))
-            task_thread.start()
-            next_task = self._task_list.pop()
-        logging.info("PyMW_Scheduler finished")
-        self._running = False
+        try:
+            next_task = self._task_queue.get_nowait()
+            while next_task:
+                worker = self._interface.reserve_worker()
+                next_task._times["execute_time"] = time.time()
+                logging.info("Executing task "+str(next_task))
+                task_thread = threading.Thread(target=self._interface.execute_task, args=(next_task, worker))
+                task_thread.start()
+                next_task = self._task_queue.get_nowait()
+        except Queue.Empty:
+            logging.info("PyMW_Scheduler finished")
+            self._running = False
 
 class PyMW_Master:
     """Provides functions for users to submit tasks to the underlying interface."""
@@ -227,8 +174,8 @@ class PyMW_Master:
         else:
             self._interface = interfaces.multicore.MulticoreInterface()
         
-        self._submitted_tasks = _SyncList()
-        self._queued_tasks = _SyncList()
+        self._submitted_tasks = []
+        self._queued_tasks = Queue.Queue(0)
         self._use_state_records = use_state_records
         if self._use_state_records:
             self._state_shelve = shelve.open("pymw_state.dat")
@@ -260,14 +207,9 @@ class PyMW_Master:
         else:
             task_name = new_task_name
         
-        if self._use_state_records:
-            for task in self._submitted_tasks:
-                if str(task) == task_name:
-                    return task
-        
         new_task = PyMW_Task(task_name, executable, input_data=input_data, file_loc=self._task_dir_name)
         self._submitted_tasks.append(new_task)
-        self._queued_tasks.append(new_task)
+        self._queued_tasks.put(item=new_task, block=False)
         self._scheduler._start_scheduler()
         
         return new_task
@@ -276,11 +218,8 @@ class PyMW_Master:
         """Gets the result of the executed task.
         If task is None, return the result of the next finished task.
         If wait is false and the task is not finished, returns None."""
-        if task and not self._submitted_tasks.contains(task):
+        if task and not self._submitted_tasks.count(task):
             raise TaskException("Task has not been submitted")
-        
-        if len(self._submitted_tasks) is 0:
-            raise TaskException("No tasks yet submitted")
         
         if not task.is_task_finished(wait):
             return None, None

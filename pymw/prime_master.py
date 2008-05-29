@@ -1,3 +1,5 @@
+#!/usr/bin/env python
+
 import pymw
 import pymw.interfaces.multicore
 import pymw.interfaces.mpi

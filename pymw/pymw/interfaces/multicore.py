@@ -6,12 +6,12 @@ __author__ = "Eric Heien <e-heien@ist.osaka-u.ac.jp>"
 __date__ = "10 April 2008"
 
 import subprocess
-import pymw.pymw
 import sys
 import ctypes
 import os
 import signal
 import threading
+import Queue
 
 """On worker restarting:
 Multicore systems cannot handle worker restarts - recording PIDs
@@ -36,19 +36,19 @@ class MulticoreInterface:
 
 	def __init__(self, num_workers=1, python_loc="python"):
 		self._num_workers = num_workers
-		self._available_worker_list = pymw.pymw._SyncList()
+		self._available_worker_list = Queue.Queue(0)
 		self._worker_list = []
 		self._python_loc = python_loc
 		self._worker_sem = threading.Semaphore(0)
 		for worker_num in range(num_workers):
 			w = Worker()
-			self._available_worker_list.append(w)
+			self._available_worker_list.put_nowait(item=w)
 			self._worker_list.append(w)
 			self._worker_sem.release()
 	
 	def reserve_worker(self):
 		self._worker_sem.acquire()
-		return self._available_worker_list.pop()
+		return self._available_worker_list.get(block=True)
 	
 	def execute_task(self, task, worker):
 		try:
@@ -70,7 +70,7 @@ class MulticoreInterface:
 		
 		worker._exec_process = None
 		task.task_finished(task_error)	# notify the task
-		self._available_worker_list.append(worker)	# rejoin the list of available workers
+		self._available_worker_list.put_nowait(item=worker)	# rejoin the list of available workers
 		self._worker_sem.release()
 
 	def _cleanup(self):
