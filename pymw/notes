@@ -82,7 +82,6 @@ functionality of BOINC, yet.
 TODO:
 	- More carefully define what happens when multiple calls to pymw_return_output are made
 	- Finish state saving functionality, test
-	- Implement MPI interface
 	- Allow functions to be passed as the worker
 	- Allow for passing of object files to worker through stdin
 	

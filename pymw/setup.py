@@ -8,5 +8,6 @@ setup(name='pymw',
       author='Eric Heien',
       author_email='e-heien@ist.osaka-u.ac.jp',
       url='http://pymw.sourceforge.net/',
-      packages=['pymw', 'pymw.interfaces'],
+      packages=['pymw'],
+      package_dir={'pymw': 'pymw'}
      )
