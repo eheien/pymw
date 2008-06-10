@@ -59,8 +59,7 @@ def master():
 	try:
 		while True:
 			cmd = recv(pymw_socket)
-			if cmd:
-				task_list.append(cmd.split())
+			if cmd: task_list.append(cmd.split())
 
 			# If we have a task and a worker available to do it
 			if len(task_list) > 0 and len(worker_list) > 0:

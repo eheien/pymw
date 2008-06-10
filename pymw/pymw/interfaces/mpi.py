@@ -5,12 +5,8 @@
 __author__ = "Eric Heien <e-heien@ist.osaka-u.ac.jp>"
 __date__ = "10 April 2008"
 
-
 import subprocess
 import threading
-import pymw.pymw
-import sys
-import os
 import socket
 import logging
 import struct

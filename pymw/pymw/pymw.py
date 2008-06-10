@@ -225,7 +225,6 @@ class PyMW_Master:
             return None, None
 
         if task._error:
-            self._scheduler._exit()
             raise task._error
         
         return task, task._output_data

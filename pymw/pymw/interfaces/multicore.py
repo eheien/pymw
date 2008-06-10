@@ -39,15 +39,12 @@ class MulticoreInterface:
 		self._available_worker_list = Queue.Queue(0)
 		self._worker_list = []
 		self._python_loc = python_loc
-		self._worker_sem = threading.Semaphore(0)
 		for worker_num in range(num_workers):
 			w = Worker()
 			self._available_worker_list.put_nowait(item=w)
 			self._worker_list.append(w)
-			self._worker_sem.release()
 	
 	def reserve_worker(self):
-		self._worker_sem.acquire()
 		return self._available_worker_list.get(block=True)
 	
 	def execute_task(self, task, worker):
@@ -62,16 +59,15 @@ class MulticoreInterface:
 			retcode = worker._exec_process.returncode
 			task_error = None
 			if retcode is not 0:
-				task_error = pymw.pymw.InterfaceException("Executable failed with error "+str(retcode), proc_stderr)
+				task_error = Exception("Executable failed with error "+str(retcode), proc_stderr)
 				
 		except OSError:
 			# TODO: check the actual error code
-			task_error = pymw.pymw.InterfaceException("Could not find python")
+			task_error = Exception("Could not find python")
 		
 		worker._exec_process = None
 		task.task_finished(task_error)	# notify the task
 		self._available_worker_list.put_nowait(item=worker)	# rejoin the list of available workers
-		self._worker_sem.release()
 
 	def _cleanup(self):
 		for worker in self._worker_list:
