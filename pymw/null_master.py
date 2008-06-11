@@ -34,7 +34,7 @@ else:
 pymw_master = pymw.pymw.PyMW_Master(interface=interface_obj)
 
 post_init_time = time.time()
-tasks = [pymw_master.submit_task(null_worker, input_data=i) for i in range(n_tasks)]
+tasks = [pymw_master.submit_task(null_worker, input_data=(i,)) for i in range(n_tasks)]
 
 for task in tasks:
 	res_task, res = pymw_master.get_result(task)

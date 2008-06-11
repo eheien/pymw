@@ -9,13 +9,14 @@ import threading
 import cPickle
 import time
 import os
+import sys
 import types
 import atexit
 import interfaces.multicore
 import logging
-import decimal
 import Queue
 import inspect
+from pymw_app import *
 
 # THINK ABOUT THIS
 # New way of handling finished tasks:
@@ -198,7 +199,7 @@ class PyMW_Master:
         modules and PyMW calls to get the input data and return the
         output data."""
         
-        all_funcs = (main_func,)+dep_funcs
+        all_funcs = (main_func,)+dep_funcs+(pymw_get_input, pymw_return_output)
         func_hash = hash(all_funcs)
         if not self._function_source.has_key(func_hash):
             func_sources = [inspect.getsource(func) for func in all_funcs]
@@ -208,11 +209,8 @@ class PyMW_Master:
         
         func_data = self._function_source[func_hash]
         func_file = open(file_name, "w")
-        func_file.write("import sys\n")
-        func_file.write("sys.path += \"..\"\n")
-        for mod in modules:
+        for mod in modules+("cPickle", "sys"):
             func_file.write("import "+mod+"\n")
-        func_file.write("from pymw.pymw_app import *\n\n")
         func_file.writelines(func_data[1])
         func_file.write("\npymw_return_output("+func_data[0]+"(*pymw_get_input()))\n")
         func_file.close()
