@@ -1,11 +1,14 @@
 #!/usr/bin/env python
 
-import pymw
+from pymw import *
 import pymw.interfaces.multicore
 import pymw.interfaces.mpi
 import pymw.interfaces.boinc
 import time
 from optparse import OptionParser
+
+def null_worker(in_data):
+	return in_data
 
 parser = OptionParser(usage="usage: %prog")
 parser.add_option("-i", "--interface", dest="interface", default="multicore", help="specify the interface (multicore/mpi/boinc)", metavar="INTERFACE")
@@ -31,7 +34,7 @@ else:
 pymw_master = pymw.pymw.PyMW_Master(interface=interface_obj)
 
 post_init_time = time.time()
-tasks = [pymw_master.submit_task('null_worker.py', input_data=i) for i in range(n_tasks)]
+tasks = [pymw_master.submit_task(null_worker, input_data=i) for i in range(n_tasks)]
 
 for task in tasks:
 	res_task, res = pymw_master.get_result(task)

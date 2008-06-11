@@ -13,9 +13,9 @@ import types
 import atexit
 import interfaces.multicore
 import logging
-import shelve
 import decimal
 import Queue
+import inspect
 
 # THINK ABOUT THIS
 # New way of handling finished tasks:
@@ -166,7 +166,7 @@ class PyMW_Scheduler:
 
 class PyMW_Master:
     """Provides functions for users to submit tasks to the underlying interface."""
-    def __init__(self, interface=None, use_state_records=False, loglevel=logging.CRITICAL):
+    def __init__(self, interface=None, loglevel=logging.CRITICAL):
         logging.basicConfig(level=loglevel, format="%(asctime)s %(levelname)s %(message)s")
 
         if interface:
@@ -176,14 +176,10 @@ class PyMW_Master:
         
         self._submitted_tasks = []
         self._queued_tasks = Queue.Queue(0)
-        self._use_state_records = use_state_records
-        if self._use_state_records:
-            self._state_shelve = shelve.open("pymw_state.dat")
-        else:
-            self._state_shelve = None
         
         self._task_dir_name = "tasks"
         self._cur_task_num = 0
+        self._function_source = {}
 
         # Make the directory for input/output files, if it doesn't already exist
         try:
@@ -196,18 +192,45 @@ class PyMW_Master:
         self._scheduler = PyMW_Scheduler(self._queued_tasks, self._interface)
         atexit.register(self._cleanup)
     
-    def submit_task(self, executable, input_data=None, new_task_name=None):
+    def _setup_exec_file(self, file_name, func):
+        """Sets up a file for executing a function.  This file
+        contains the function source, and PyMW calls to get the
+        input data and return the output data."""
+        
+        func_hash = hash(func)
+        if not self._function_source.has_key(func_hash):
+            self._function_source[func_hash] = [func.func_name, inspect.getsource(func), file_name]
+        else:
+            return
+        func_data = self._function_source[func_hash]
+        func_file = open(file_name, "w")
+        func_file.write("import sys\n")
+        func_file.write("sys.path += \"..\"\n")
+        func_file.write("from pymw.pymw_app import *\n\n")
+        func_file.write(func_data[1])
+        func_file.write("\npymw_return_output("+func_data[0]+"(pymw_get_input()))\n")
+        func_file.close()
+        
+    def submit_task(self, executable, input_data=None):
         """Creates and submits a task to the internal list for execution.
         Returns the created task for later use.
         executable can be either a filename (Python script) or a function."""
         
-        if not new_task_name:
+        if callable(executable):
+            task_name = str(executable.func_name)+"_"+str(self._cur_task_num)
+            exec_file_name = self._task_dir_name+"/"+str(executable.func_name)
+            self._setup_exec_file(exec_file_name, executable)
+        elif isinstance(executable, str):
             task_name = str(executable)+"_"+str(self._cur_task_num)
-            self._cur_task_num += 1
+            exec_file_name = executable
         else:
-            task_name = new_task_name
+            raise TaskException("executable must be a filename or function")
         
-        new_task = PyMW_Task(task_name, executable, input_data=input_data, file_loc=self._task_dir_name)
+        self._cur_task_num += 1
+        
+        new_task = PyMW_Task(task_name, exec_file_name, input_data=input_data,
+                             file_loc=self._task_dir_name)
+        
         self._submitted_tasks.append(new_task)
         self._queued_tasks.put(item=new_task, block=False)
         self._scheduler._start_scheduler()
@@ -242,6 +265,9 @@ class PyMW_Master:
         
         for task in self._submitted_tasks:
             task.cleanup()
+        
+        for exec_file in self._function_source:
+            os.remove(self._function_source[exec_file][2])
         
         try:
             os.rmdir(self._task_dir_name)
