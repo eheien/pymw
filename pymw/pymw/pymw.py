@@ -192,26 +192,32 @@ class PyMW_Master:
         self._scheduler = PyMW_Scheduler(self._queued_tasks, self._interface)
         atexit.register(self._cleanup)
     
-    def _setup_exec_file(self, file_name, func):
-        """Sets up a file for executing a function.  This file
-        contains the function source, and PyMW calls to get the
-        input data and return the output data."""
+    def _setup_exec_file(self, file_name, main_func, modules, dep_funcs):
+        """Sets up a script file for executing a function.  This file
+        contains the function source, dependent functions, dependent
+        modules and PyMW calls to get the input data and return the
+        output data."""
         
-        func_hash = hash(func)
+        all_funcs = (main_func,)+dep_funcs
+        func_hash = hash(all_funcs)
         if not self._function_source.has_key(func_hash):
-            self._function_source[func_hash] = [func.func_name, inspect.getsource(func), file_name]
+            func_sources = [inspect.getsource(func) for func in all_funcs]
+            self._function_source[func_hash] = [main_func.func_name, func_sources, file_name]
         else:
             return
+        
         func_data = self._function_source[func_hash]
         func_file = open(file_name, "w")
         func_file.write("import sys\n")
         func_file.write("sys.path += \"..\"\n")
+        for mod in modules:
+            func_file.write("import "+mod+"\n")
         func_file.write("from pymw.pymw_app import *\n\n")
-        func_file.write(func_data[1])
-        func_file.write("\npymw_return_output("+func_data[0]+"(pymw_get_input()))\n")
+        func_file.writelines(func_data[1])
+        func_file.write("\npymw_return_output("+func_data[0]+"(*pymw_get_input()))\n")
         func_file.close()
         
-    def submit_task(self, executable, input_data=None):
+    def submit_task(self, executable, input_data=None, modules=(), dep_funcs=()):
         """Creates and submits a task to the internal list for execution.
         Returns the created task for later use.
         executable can be either a filename (Python script) or a function."""
@@ -219,7 +225,7 @@ class PyMW_Master:
         if callable(executable):
             task_name = str(executable.func_name)+"_"+str(self._cur_task_num)
             exec_file_name = self._task_dir_name+"/"+str(executable.func_name)
-            self._setup_exec_file(exec_file_name, executable)
+            self._setup_exec_file(exec_file_name, executable, modules, dep_funcs)
         elif isinstance(executable, str):
             task_name = str(executable)+"_"+str(self._cur_task_num)
             exec_file_name = executable
