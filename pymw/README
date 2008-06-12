@@ -1,9 +1,9 @@
 Notes about using PyMW:
 
-To try out the sample applications, execute the *_master.py files in Python.
+To try out the sample applications, run the example/*.py files in Python.
 For example:
 
-user% python monte_master.py -t 1000
+user% python monte_pi.py -t 1000
 3.148 0.00640734641021
 Number of Workers: 4
 Calculation time: 0.470422029495

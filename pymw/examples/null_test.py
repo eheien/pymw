@@ -28,7 +28,7 @@ else:
 	print "Interface", options.interface, "unknown."
 	exit()
 
-pymw_master = pymw.pymw.PyMW_Master(interface=interface_obj)
+pymw_master = pymw.PyMW_Master(interface=interface_obj)
 
 post_init_time = time.time()
 tasks = [pymw_master.submit_task(null_worker, input_data=(i,)) for i in range(n_tasks)]
