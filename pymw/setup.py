@@ -13,6 +13,6 @@ setup(name='pymw',
       long_description=DESC,
       license="MIT License",
       platforms=["any"],
-      packages=['pymw'],
+      packages=['pymw', 'pymw.interfaces'],
       package_dir={'pymw': 'pymw'},
      )
