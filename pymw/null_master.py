@@ -1,9 +1,6 @@
 #!/usr/bin/env python
 
 from pymw import *
-import pymw.interfaces.multicore
-import pymw.interfaces.mpi
-import pymw.interfaces.boinc
 import time
 from optparse import OptionParser
 
