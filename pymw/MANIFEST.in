@@ -1,0 +1,3 @@
+include examples/*n*.py
+include README
+
