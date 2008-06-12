@@ -12,6 +12,47 @@ import os
 import re
 import time
 
+WU_TEMPLATE = """
+<file_info>
+    <number>0</number>
+</file_info>
+<file_info>
+    <number>1</number>
+</file_info>
+<workunit>
+    <file_ref>
+    <file_number>0<file_number>
+    <open_name><PYMW_EXECUTABLE/></open_name>
+    <copy_file/>
+    </file_ref>
+    <file_ref>
+    <file_number>1<file_number>
+    <open_name><PYMW_INPUT/></open_name>
+    <copy_file/>
+    </file_ref>
+    <command_line><PYMW_CMDLINE/></command_line>
+    <min_quorum>1</min_quorum>
+    <target_nresults>1</target_nresults>
+</workunit>
+"""
+
+RESULT_TEMPLATE = """
+<file_info>
+    <name><OUTFILE_0/></name>
+    <generated_locally/>
+    <upload_when_present/>
+    <max_nbytes>32768</max_nbytes>
+    <url><UPLOAD_URL/></url>
+</file_info>
+<result>
+    <file_ref>
+    <file_name><OUTFILE_0/></file_name>
+    <open_name><PYMW_OUTPUT/></open_name>
+    <copy_file/>
+    </file_ref>
+</result>
+"""
+
 class _ResultHandler(threading.Thread):
     def __init__(self, task, sleeptime = 10):
         threading.Thread.__init__(self)
@@ -30,8 +71,8 @@ class BOINCInterface:
         self._project_home = project_home
         self._project_download = project_home + "/download/"
         self._project_templates = project_home + "/templates/"
-        self._boinc_wu_template = open("pymw/interfaces/boinc_wu_template.xml").readlines()
-        self._boinc_result_template = open("pymw/interfaces/boinc_result_template.xml").readlines()
+        self._boinc_wu_template = RESULT_TEMPLATE.split('\n')
+        self._boinc_result_template = WU_TEMPLATE.split('\n')
         self._cwd = os.getcwd()
     
     def reserve_worker(self):
