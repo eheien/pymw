@@ -1,6 +1,14 @@
-Notes about using PyMW:
+PyMW - Master Worker Computing in Python
+PyMW is a Python module for parallel master-worker computing
+in a variety of environments. With the PyMW module, users can
+write a single program that scales from multicore machines to
+global computing platforms.
 
-To try out the sample applications, run the example/*.py files in Python.
+INSTALLATION
+python setup.py install
+
+DOCUMENTATION
+To try out the sample applications, run the example/*.py files.
 For example:
 
 user% python monte_pi.py -t 1000
@@ -11,4 +19,3 @@ Total time: 0.471640825272
 
 Use the -h option to see a list of options for each program.
 
-Note: ga_master.py is currently not functional.
