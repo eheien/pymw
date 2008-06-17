@@ -39,24 +39,23 @@ def recv(pymw_socket):
 	return data
 
 class MPIInterface:
-	def __init__(self, num_workers=1, mpirun_loc="mpirun"):
-		if num_workers%2: num_workers -= 1
+	def __init__(self, num_workers=1, mpirun_loc="mpirun", startup_timeout=30, socket_port=43192):
+		if num_workers%2: num_workers -= 1    # to avoid crashes on our SCore cluster
 
 		self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 		self.host = socket.gethostbyname(socket.gethostname())
-		self.port = 43192
 		self.socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-		self.socket.bind((self.host, self.port))
+		self.socket.bind((self.host, socket_port))
 		self.socket.listen(1)
 
 		self._manager_process = subprocess.Popen(args=[mpirun_loc, "-np", str(num_workers),
 			"/home/myri-fs/e-heien/local/bin/pyMPI",
 			"/home/myri-fs/e-heien/osaka/pymw/pymw/interfaces/mpi_manager.py",
-			self.host, str(self.port)],
+			self.host, str(socket_port)],
 			stdin=None, stdout=None, stderr=None)
 			#stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
 		# accept connection from manager process
-		self.socket.settimeout(30)
+		self.socket.settimeout(startup_timeout)
 		(csocket, address) = self.socket.accept()
 		self.csocket = csocket
 

@@ -70,7 +70,7 @@ else:
 	print "Interface", options.interface, "unknown."
 	exit()
 
-pymw_master = pymw.pymw.PyMW_Master(interface=interface_obj)
+pymw_master = pymw.PyMW_Master(interface=interface_obj)
 
 post_init_time = time.time()
 
@@ -91,8 +91,8 @@ tasks = [pymw_master.submit_task(prime_range_check,
 
 primes = []
 
-for task in tasks:
-	res_task, res = pymw_master.get_result(task)
+for i in range(len(in_data)):
+	res_task, res = pymw_master.get_result()
 	primes.extend(res)
 
 end_time = time.time()

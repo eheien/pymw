@@ -58,8 +58,8 @@ tasks = [pymw_master.submit_task(monte_pi,
 num_hits = 0
 num_tests = 0
 
-for task in tasks:
-	res_task, result = pymw_master.get_result(task)
+for i in range(num_tasks):
+	res_task, result = pymw_master.get_result()
 	num_hits += result[0]
 	num_tests += result[1]
 
