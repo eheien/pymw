@@ -184,7 +184,10 @@ class PyMW_Scheduler:
         """Waits for submissions to the task list, then submits them to the interface."""
         next_task = self._task_queue.pop(blocking=False)
         while next_task:
-            worker = self._interface.reserve_worker()
+            try:
+                worker = self._interface.reserve_worker()
+            except AttributeError:
+                worker = None
             next_task._times["execute_time"] = time.time()
             logging.info("Executing task "+str(next_task))
             task_thread = threading.Thread(target=self._interface.execute_task,
