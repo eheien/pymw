@@ -304,7 +304,10 @@ class PyMW_Master:
         return my_task, my_task._output_data
     
     def get_status(self):
-        status = self._interface.get_status()
+        try:
+            status = self._interface.get_status()
+        except AttributeError:
+            status = {}
         status["tasks"] = self._submitted_tasks
         return status
 
