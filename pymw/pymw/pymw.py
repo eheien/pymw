@@ -13,6 +13,8 @@ import sys
 import types
 import atexit
 import interfaces.multicore
+import interfaces.mpi
+import interfaces.boinc
 import logging
 import inspect
 from pymw_app import *

@@ -83,10 +83,14 @@ class BOINCInterface:
         out_file = task._output_arg.rpartition('/')[2]
 	
         # Get input destination
+        os.chdir(self._project_home)
+
         cmd = self._project_home + "/bin/dir_hier_path " + in_file
         in_path = os.popen(cmd, "r").read().strip()
         cmd = self._project_home + "/bin/dir_hier_path " + task._executable
         exe_path = os.popen(cmd, "r").read().strip()
+	
+	os.chdir(self._cwd)
     
         # Copy input files to download dir
         try:
@@ -125,6 +129,7 @@ class BOINCInterface:
         cmd += " -wu_template templates/" +  wu_template
         cmd += " -result_template templates/" + result_template 
         cmd +=  " " + task._executable + " "  + in_file
+	
         os.chdir(self._project_home)
         os.system(cmd)
         os.chdir(self._cwd)
