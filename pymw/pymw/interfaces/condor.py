@@ -14,12 +14,10 @@ import signal
 import threading
 import Queue
 
-"""On worker restarting:
-Multicore systems cannot handle worker restarts - recording PIDs
-can result in unspecified behavior (especially if the system is restarted).
-The solution is to check for a result on program restart - if it's not there,
-delete the directory and start the task anew."""
-
+# ERIC: Python won't always be in the same place.
+# ERIC: You should change C:\python25\python.exe to a tag like <PY_LOC/>
+# ERIC: and replace it like the other tags
+# ERIC: Do the same for Error and Log
 SD_TEMPLATE = """Universe = vanilla
 Executable = C:\python25\python.exe
 Error = C:/condor/bin/pytest.err
@@ -44,6 +42,8 @@ class CondorInterface:
     """Provides a simple interface for single machine systems.
     This can take advantage of multicore by starting multiple processes."""
 
+# ERIC: project_home is for the BOINC interface, you can remove it.
+# ERIC: Instead, have a "python_loc" input, which defaults to C:\python25\python.exe
     def __init__(self, project_home):
         self._project_home = project_home
         #self._num_workers = num_workers
@@ -57,6 +57,7 @@ class CondorInterface:
         #    self._available_worker_list.put_nowait(item=w)
         #    self._worker_list.append(w)
     
+# ERIC: Right now, we don't keep track of workers, so this can return None
     def reserve_worker(self):
         return self._available_worker_list.get(block=True)
     
@@ -72,6 +73,8 @@ class CondorInterface:
             #wu_template = "pymw_wu_" + str(task._task_name) + ".xml"
             #dest = self._project_templates + sd_template
             condor_sd_template = list(self._condor_sd_template)
+# ERIC: Add replacement for other tags (Python location, error file, log file)
+# ERIC: Each task should have a unique log and error file
             for i in range(len(condor_sd_template)):
                 if re.search("<PYMW_DIR/>", condor_sd_template[i]):
                     condor_sd_template[i] = condor_sd_template[i].replace("<PYMW_DIR/>", os.getcwd())
@@ -89,6 +92,8 @@ class CondorInterface:
                 #if re.search("<PYMW_OUTPUT/>", boinc_wu_template[i]):
                 #    condor_sd_template[i] = condor_sd_template[i].replace("<PYMW_OUTPUT/>", task._executable + " " + in_file + " " + out_file)
             #dest = self._project_templates
+# ERIC: Each task should have a unique submit file.  This should
+# ERIC: be in the same place as the input and output files
             dest = "C:/condor/pytest.txt"
             #open(dest, "w").writelines(condor_sd_template)
             f=open(dest,"w")
@@ -99,11 +104,17 @@ class CondorInterface:
             #        task._output_arg], creationflags=cf, stderr=subprocess.PIPE)
             #worker._exec_process = subprocess.Popen(args=["C:\condor\bin\condor_submit", dest],
             #                                         creationflags=cf, stderr=subprocess.PIPE)
+# ERIC: Please add a variable to the interface to let users specify the location of condor
             cmd = "C:/condor/bin/condor_submit "+dest
+# ERIC: os.system works well for running condor_submit, except that it prints
+# ERIC: Condor messages.  Try to use subprocess.Popen so you can control whether
+# ERIC: the Condor status messages appear
             os.system(cmd)
             
             #proc_stdout, proc_stderr = worker._exec_process.communicate()   # wait for the process to finish
             #retcode = worker._exec_process.returncode
+# ERIC: Eventually, you should check the error file here for problems, and create an Exception
+# ERIC: if Condor couldn't finish the task
             task_error = None
             #if retcode is not 0:
             #    task_error = Exception("Executable failed with error "+str(retcode), proc_stderr)
@@ -113,6 +124,7 @@ class CondorInterface:
             task_error = Exception("Could not find python")
         
         #worker._exec_process = None
+# ERIC: When the task finishes, delete the error, log and submit files
         task.task_finished(task_error)    # notify the task
         #self._available_worker_list.put_nowait(item=worker)    # rejoin the list of available workers
 
@@ -120,6 +132,7 @@ class CondorInterface:
 #        for worker in self._worker_list:
 #            worker._kill()
 #
+# ERIC: You could return the result of "condor_status.exe" here
 #    def get_status(self):
 #        return {"num_total_workers" : self._num_workers,
 #            "num_active_workers": self._num_workers-len(self._worker_list)}
