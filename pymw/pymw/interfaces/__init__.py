@@ -1,2 +1,2 @@
-__all__ = ["multicore", "mpi", "boinc"]
+__all__ = ["multicore", "mpi", "boinc","condor"]
 
