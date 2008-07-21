@@ -1,7 +1,9 @@
-import pymw
-import pymw.interfaces.multicore
-import pymw.interfaces.mpi
-import pymw.interfaces.boinc
+#!/usr/bin/env python
+
+from pymw import *
+#import pymw.interfaces.multicore
+#import pymw.interfaces.mpi
+#import pymw.interfaces.boinc
 import time
 from optparse import OptionParser
 
@@ -27,7 +29,7 @@ else:
 	print "Interface", options.interface, "unknown."
 	exit()
 
-pymw_master = pymw.pymw.PyMW_Master(interface=interface_obj)
+pymw_master = pymw.PyMW_Master(interface=interface_obj)
 
 post_init_time = time.time()
 
