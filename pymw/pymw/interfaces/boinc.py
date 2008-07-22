@@ -63,7 +63,7 @@ class _ResultHandler(threading.Thread):
 
     def run(self):
         while 1:
-            if os.path.isfile(self._cwd + "/" + self._task._output_arg):
+            if os.path.isfile(os.path.join(self._cwd, self._task._output_arg)):
                 self._task.task_finished()
         	break
 	    logging.debug("Waiting for result, sleeping for " + str(self._sleeptime) + " seconds...")
