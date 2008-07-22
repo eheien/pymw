@@ -1,0 +1,7 @@
+#echo off
+set _path=%path%
+set _python=%_path:*python=python%
+set _python=%_python:~0,6%
+if %_python% neq python set PATH=%path%;C:\python25
+python %1 %2 %s3
+type nul > boinc_finish_called

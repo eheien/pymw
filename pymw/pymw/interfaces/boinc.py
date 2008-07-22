@@ -11,8 +11,10 @@ import shutil
 import os
 import re
 import time
+import logging
 
-INPUT_TEMPLATE = """<file_info>
+INPUT_TEMPLATE = """\
+<file_info>
     <number>0</number>
 </file_info>
 <file_info>
@@ -35,7 +37,8 @@ INPUT_TEMPLATE = """<file_info>
 </workunit>
 """
 
-OUTPUT_TEMPLATE = """<file_info>
+OUTPUT_TEMPLATE = """\
+<file_info>
     <name><OUTFILE_0/></name>
     <generated_locally/>
     <upload_when_present/>
@@ -63,6 +66,7 @@ class _ResultHandler(threading.Thread):
             if os.path.isfile(self._cwd + "/" + self._task._output_arg):
                 self._task.task_finished()
         	break
+	    logging.debug("Waiting for result, sleeping for " + str(self._sleeptime) + " seconds...")
 	    time.sleep(self._sleeptime)
 
 class BOINCInterface:
@@ -80,6 +84,7 @@ class BOINCInterface:
     def execute_task(self, task, worker):
 	# Check if project_home dir is known
 	if self._project_home == '':
+	    logging.critical("Missing BOINC project home directory")
 	    task_error = Exception("Missing BOINC project home directory (-p switch)")
 	    task.task_finished(task_error)
 	    return None
@@ -89,6 +94,7 @@ class BOINCInterface:
 	task_exe = task._executable.rpartition('/')[2]
 
 	# Block concurent threads until changing directories
+	logging.debug("Locking thread")
 	lock = threading.Lock()
 	lock.acquire()
 
@@ -106,7 +112,7 @@ class BOINCInterface:
         if not os.path.isfile(exe_dest):
             shutil.copyfile(task._executable, exe_dest)
 	while(1):
-	    print "Waiting for input to become ready..."
+	    logging.debug("Waiting for input to become ready...")
 	    if os.path.isfile(task._input_arg):
 		break
 	shutil.copyfile(task._input_arg, in_dest)
@@ -136,9 +142,11 @@ class BOINCInterface:
         os.chdir(self._project_home)
 	os.system(cmd)
         os.chdir(self._cwd)
-
+	logging.debug("CWD returned to " + self._cwd)
+	
 	# Release lock	
 	lock.release()
+	logging.debug("Releasing thread lock")
         
         # Wait for the results
         tasks = []
