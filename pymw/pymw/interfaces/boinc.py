@@ -110,6 +110,10 @@ class BOINCInterface:
     
         # Copy input files to download dir
         if not os.path.isfile(exe_dest):
+	    while(1):
+		logging.debug("Waiting for task exe to become ready")
+		if os.path.isfile(task._executable):
+		    break
             shutil.copyfile(task._executable, exe_dest)
 	while(1):
 	    logging.debug("Waiting for input to become ready...")
