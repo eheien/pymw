@@ -1,0 +1,4 @@
+
+Changes in 0.1
+- Initial release
+- Supports master-worker style parallel computing on multicore processors, MPI clusters and BOINC.
