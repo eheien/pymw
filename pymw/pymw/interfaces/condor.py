@@ -14,10 +14,6 @@ import signal
 import threading
 import Queue
 
-# ERIC: Python won't always be in the same place.
-# ERIC: You should change C:\python25\python.exe to a tag like <PY_LOC/>
-# ERIC: and replace it like the other tags
-# ERIC: Do the same for Error and Log
 SD_TEMPLATE = """Universe = vanilla
 Executable = <PYTHON_LOC/>
 Error = <PYMW_ERROR/>
@@ -26,40 +22,16 @@ Arguments = <PYMW_EXEC/> <PYMW_INPUT/> <PYMW_OUTPUT/>
 InitialDir = <PYMW_DIR/>
 Queue"""
 
-#Executable = C:\python25\python.exe
-
-#class Worker:
-#    def __init__(self):
-#        self._exec_process = None
-#    
-#    def _kill(self):
-#        if self._exec_process:
-#            if sys.platform.startswith("win"):
-#                ctypes.windll.kernel32.TerminateProcess(int(self._exec_process._handle), -1)
-#            else:
-#                os.kill(self._exec_process.pid, signal.SIGKILL)
-
 class CondorInterface:
     """Provides a simple interface for single machine systems.
     This can take advantage of multicore by starting multiple processes."""
 
-# ERIC: project_home is for the BOINC interface, you can remove it.
-# ERIC: Instead, have a "python_loc" input, which defaults to C:\python25\python.exe
-    def __init__(self, project_home):
-        self._python_loc = "C:/python25/python.exe"
+    def __init__(self, python_loc="C:/python25/python.exe", condor_loc="C:/condor/bin/"):
+        self._python_loc = python_loc
         self._condor_sd_template = SD_TEMPLATE.split('\n')
-        self._condor_loc = "C:/condor/bin/"
-        #self._num_workers = num_workers
-        #self._available_worker_list = Queue.Queue(0)
-        #self._worker_list = []
-        #for worker_num in range(num_workers):
-        #    w = Worker()
-        #    self._available_worker_list.put_nowait(item=w)
-        #    self._worker_list.append(w)
+        self._condor_loc = condor_loc
     
-# ERIC: Right now, we don't keep track of workers, so this can return None
     def reserve_worker(self):
-        #return self._available_worker_list.get(block=True)
         return None
     
     def execute_task(self, task, worker):
@@ -74,8 +46,6 @@ class CondorInterface:
             #wu_template = "pymw_wu_" + str(task._task_name) + ".xml"
             #dest = self._project_templates + sd_template
             condor_sd_template = list(self._condor_sd_template)
-# ERIC: Add replacement for other tags (Python location, error file, log file)
-# ERIC: Each task should have a unique log and error file
             for i in range(len(condor_sd_template)):
                 if re.search("<PYTHON_LOC/>", condor_sd_template[i]):
                     condor_sd_template[i] = condor_sd_template[i].replace("<PYTHON_LOC/>", self._python_loc)
@@ -106,7 +76,6 @@ class CondorInterface:
             #        task._output_arg], creationflags=cf, stderr=subprocess.PIPE)
             #worker._exec_process = subprocess.Popen(args=["C:\condor\bin\condor_submit", dest],
             #                                         creationflags=cf, stderr=subprocess.PIPE)
-# ERIC: Please add a variable to the interface to let users specify the location of condor
             #cmd = self._condor_loc +" " + dest
 # ERIC: os.system works well for running condor_submit, except that it prints
 # ERIC: Condor messages.  Try to use subprocess.Popen so you can control whether
