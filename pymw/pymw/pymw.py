@@ -162,9 +162,8 @@ class PyMW_Task:
 
     def cleanup(self):
         try:
-            #os.remove(self._input_arg)
-            #os.remove(self._output_arg)
-            pass
+            os.remove(self._input_arg)
+            os.remove(self._output_arg)
         except OSError:
             pass
 
@@ -250,8 +249,6 @@ class PyMW_Master:
         else:
             self._interface = interfaces.multicore.MulticoreInterface()
         
-        #print "self:", self._interface
-        #print "interfaces:", interfaces.multicore.MulticoreInterface()
         self._submitted_tasks = []
         self._queued_tasks = PyMW_List()
         self._finished_tasks = PyMW_List()
@@ -276,10 +273,16 @@ class PyMW_Master:
         modules and PyMW calls to get the input data and return the
         output data."""
         
-        #if self._interface == interfaces.multicore.MulticoreInterface():
+        # ERIC: this works fine for multicore, but it would be good for it to
+        # ERIC: work with all interfaces.  Rather than searching for "MulticoreInterface"
+        # ERIC: here, is there a way to test if self._interface contains the pymw_get_input
+        # ERIC: and pymw_return_output functions?
         if str(self._interface).find(str(interfaces.multicore.MulticoreInterface)):
             all_funcs = (main_func,)+dep_funcs+(interfaces.multicore.pymw_get_input, interfaces.multicore.pymw_return_output)
         else:
+            # ERIC: this looks good.  Just to simplify things, could you move the pymw_get_input
+            # ERIC: and pymw_return_output functions into this file (pymw.py), then
+            # ERIC: delete pymw_app.py?
             all_funcs = (main_func,)+dep_funcs+(pymw_get_input, pymw_return_output)
         func_hash = hash(all_funcs)
         if not self._function_source.has_key(func_hash):
@@ -375,6 +378,8 @@ class PyMW_Master:
         reducetasks = []
         for task in maptasks:
             res_task,result = self.get_result(task)
+            # ERIC: if you want to print out debugging information here, I'd recommend
+            # ERIC: the logging module. See PyMW_Scheduler for examples of how to use it
             print "return:", res_task, result
             #task = self.submit_task(exec_reduce, input_data=(result,), modules=modules, dep_funcs=dep_funcs)
             reducetasks.append(self.submit_task(exec_reduce, input_data=(result,), modules=modules, dep_funcs=dep_funcs))
@@ -436,6 +441,9 @@ class PyMW_Master:
         for task in self._submitted_tasks:
             task.cleanup()
         
+        # ERIC: try not to comment out this sort of cleaning code
+        # ERIC: if you want to keep the files for debugging, you could add a variable
+        # ERIC: like "dont_delete_files" that lets the user decide whether to keep them
         for exec_file in self._function_source:
             #os.remove(self._function_source[exec_file][2])
             pass
@@ -446,7 +454,8 @@ class PyMW_Master:
         except OSError:
             pass
 
-    
+# ERIC: try to program mapreduce so this function isn't needed.
+# ERIC: at worst, use a lambda function inside mapreduce so you can delete this finish() function
 def finish(list=[]):
     
     return list

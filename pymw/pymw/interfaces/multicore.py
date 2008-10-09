@@ -78,17 +78,17 @@ class MulticoreInterface:
 		return {"num_total_workers" : self._num_workers,
 			"num_active_workers": self._num_workers-len(self._worker_list)}
 
-def pymw_get_input():
-	#print "get_input"
-	infile = open(sys.argv[1], 'r')
-	obj = cPickle.Unpickler(infile).load()
-	infile.close()
-	return obj
-
-def pymw_return_output(output):
-	#print "return_output"
-	outfile = open(sys.argv[2], 'w')
-	cPickle.Pickler(outfile).dump(output)
-	outfile.close()
+	def pymw_get_input():
+		#print "get_input"
+		infile = open(sys.argv[1], 'r')
+		obj = cPickle.Unpickler(infile).load()
+		infile.close()
+		return obj
+	
+	def pymw_return_output(output):
+		#print "return_output"
+		outfile = open(sys.argv[2], 'w')
+		cPickle.Pickler(outfile).dump(output)
+		outfile.close()
 
 
