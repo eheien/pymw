@@ -13,6 +13,7 @@ import re
 import signal
 import threading
 import Queue
+import time
 
 SD_TEMPLATE = """Universe = vanilla
 Executable = <PYTHON_LOC/>
@@ -72,6 +73,7 @@ class CondorInterface:
             for ff in condor_sd_template:
                 f.write(ff+"\n")
             f.close()
+            print "task::",os.path.exists("tasks/monte_pi")
             #worker._exec_process = subprocess.Popen(args=[self._python_loc, task._executable, task._input_arg,
             #        task._output_arg], creationflags=cf, stderr=subprocess.PIPE)
             #worker._exec_process = subprocess.Popen(args=["C:\condor\bin\condor_submit", dest],
@@ -94,10 +96,24 @@ class CondorInterface:
             #print cout.poll()
             proc_stdout, proc_stderr = cout.communicate()   # wait for the process to finish
 
-            print os.path.exists("tasks/pymw.err")
-            while os.access("tasks/pymw.err", os.F_OK) == False:
-                print os.access("tasks/pymw.err", os.F_OK)
+            print os.path.exists(task._output_arg)
+            while os.access(task._output_arg, os.F_OK) == False:
+                #print "os::",os.access(task._output_arg, os.F_OK|os.R_OK|os.W_OK|os.X_OK)
+                time.sleep(0.1)
                 pass
+            print os.path.exists("tasks/pymw.log")
+            print "os::",os.access("tasks/pymw.log", os.F_OK)
+            print "os::",os.access("tasks/pymw.log", os.R_OK)
+            print "os::",os.access("tasks/pymw.log", os.W_OK)
+            print "os::",os.access("tasks/pymw.log", os.X_OK)
+            while os.access("tasks/pymw.log", os.F_OK) == False:
+                print "os::",os.access("tasks/pymw.log", os.F_OK)
+                print "os::",os.access("tasks/pymw.log", os.R_OK)
+                print "os::",os.access("tasks/pymw.log", os.W_OK)
+                print "os::",os.access("tasks/pymw.log", os.X_OK)
+                time.sleep(0.1)
+                pass
+            
             
             #retcode = worker._exec_process.returncode
 # ERIC: Eventually, you should check the error file here for problems, and create an Exception
@@ -115,9 +131,19 @@ class CondorInterface:
         
         #worker._exec_process = None
 # ERIC: When the task finishes, delete the error, log and submit files
+        """
+        for cnt in range(10):
+            time.sleep(1)
+            print cnt
+            print "os::",os.access("tasks/out_monte_pi_0.dat", os.F_OK)
+            print "os::",os.access("tasks/out_monte_pi_0.dat", os.R_OK)
+            print "os::",os.access("tasks/out_monte_pi_0.dat", os.W_OK)
+            print "os::",os.access("tasks/out_monte_pi_0.dat", os.X_OK)
+        """    
         os.remove("tasks/pymw.err")
         os.remove("tasks/pymw.log")
         os.remove("tasks/pymw_condor")
+        print "end"
         task.task_finished(task_error)    # notify the task
         #self._available_worker_list.put_nowait(item=worker)    # rejoin the list of available workers
 

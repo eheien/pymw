@@ -162,10 +162,48 @@ class PyMW_Task:
 
     def cleanup(self):
         try:
-            os.remove(self._input_arg)
-            os.remove(self._output_arg)
+            #os.remove(self._input_arg)
+            #os.remove(self._output_arg)
+            pass
         except OSError:
             pass
+
+class PyMW_Task_MapReduce(PyMW_Task):
+    """Represents a task to be executed."""
+    def __init__(self, task_name, executable, finished_queue, input_data=None,
+                 input_arg=None, output_arg=None, file_loc="tasks"):
+        self._finish_event = threading.Event()
+        
+        # Make sure executable is valid
+        #if not isinstance(executable, types.StringType) and not isinstance(executable, types.FunctionType):
+        #    raise TypeError("executable must be a filename or Python function")
+        
+        self._finished_queue = finished_queue
+        self._executable = executable
+        self._input_data = input_data
+        self._output_data = None
+        self._task_name = task_name
+
+        # Set the input and output file locations
+        if input_arg:
+            self._input_arg = input_arg
+        else:
+            self._input_arg = file_loc + "/in_" + self._task_name + ".dat"
+        
+        if output_arg:
+            self._output_arg = output_arg
+        else:
+            self._output_arg = file_loc + "/out_" + self._task_name + ".dat"
+
+        # Pickle the input data
+        logging.info("Pickling task "+str(self)+" into file "+self._input_arg)
+        #input_data_file = open(self._input_arg, 'w')
+        #cPickle.Pickler(input_data_file).dump(input_data)
+        #input_data_file.close()
+
+        # Task time bookkeeping
+        self._times = {"submit_time": time.time(), "execute_time": 0, "finish_time": 0}
+
         
 class PyMW_Scheduler:
     """Takes tasks submitted by user and sends them to the master-worker interface.
@@ -212,6 +250,8 @@ class PyMW_Master:
         else:
             self._interface = interfaces.multicore.MulticoreInterface()
         
+        #print "self:", self._interface
+        #print "interfaces:", interfaces.multicore.MulticoreInterface()
         self._submitted_tasks = []
         self._queued_tasks = PyMW_List()
         self._finished_tasks = PyMW_List()
@@ -236,7 +276,11 @@ class PyMW_Master:
         modules and PyMW calls to get the input data and return the
         output data."""
         
-        all_funcs = (main_func,)+dep_funcs+(pymw_get_input, pymw_return_output)
+        #if self._interface == interfaces.multicore.MulticoreInterface():
+        if str(self._interface).find(str(interfaces.multicore.MulticoreInterface)):
+            all_funcs = (main_func,)+dep_funcs+(interfaces.multicore.pymw_get_input, interfaces.multicore.pymw_return_output)
+        else:
+            all_funcs = (main_func,)+dep_funcs+(pymw_get_input, pymw_return_output)
         func_hash = hash(all_funcs)
         if not self._function_source.has_key(func_hash):
             func_sources = [inspect.getsource(func) for func in all_funcs]
@@ -279,6 +323,74 @@ class PyMW_Master:
         
         return new_task
     
+    def submit_task_mapreduce(self, exec_map, exec_reduce, num_worker=1, input_data=None, modules=(), dep_funcs=()):
+        
+        task_name = str(exec_map.func_name)+"_"+str(exec_reduce.func_name)+"_MR"
+        exec_file_name = self._task_dir_name+"/"+task_name
+        
+        new_maintask = PyMW_Task_MapReduce(task_name=task_name, executable=None,
+                                           finished_queue=self._finished_tasks, input_data=input_data,
+                                           file_loc=self._task_dir_name)
+        
+        self._submitted_tasks.append(new_maintask)
+        #start mapreduce_thread 
+        thread1 = threading.Thread(target=self.mapreduce_thread, args=(new_maintask, exec_map, exec_reduce, num_worker, input_data, modules, dep_funcs))
+        thread1.start()
+        
+        return new_maintask
+    
+    def submit_task_mapreduce2(self, maintask, executable, input_data=None, modules=(), dep_funcs=()):
+        
+        task_name = str(maintask)
+        exec_file_name = self._task_dir_name+"/"+str(executable.func_name)
+        self._setup_exec_file(exec_file_name, executable, modules, dep_funcs)
+        
+        new_task = PyMW_Task(task_name=task_name, executable=exec_file_name,
+                             finished_queue=self._finished_tasks, input_data=input_data,
+                             file_loc=self._task_dir_name)
+        
+        self._submitted_tasks.append(new_task)
+        self._queued_tasks.append(item=new_task)
+        self._scheduler._start_scheduler()
+        
+        return new_task
+    
+    def mapreduce_thread(self, new_maintask, exec_map, exec_reduce, num_worker, input_data, modules=(), dep_funcs=()):
+        
+        per = len(input_data) / num_worker
+        if len(input_data) % num_worker != 0:
+            per += 1
+        
+        split_data = []
+        for i in range(num_worker):
+            split_data.append(input_data[i*per:(i+1)*per])
+        print split_data
+        #split = [input[i*per:(i+1)*per] for i in range(num_worker)]
+        
+        maptasks = []            
+        for i in range(num_worker):
+            #task = self.submit_task(exec_map , input_data=(split_data[i],), modules=modules, dep_funcs=dep_funcs)
+            maptasks.append(self.submit_task(exec_map , input_data=(split_data[i],), modules=modules, dep_funcs=dep_funcs))
+        
+        reducetasks = []
+        for task in maptasks:
+            res_task,result = self.get_result(task)
+            print "return:", res_task, result
+            #task = self.submit_task(exec_reduce, input_data=(result,), modules=modules, dep_funcs=dep_funcs)
+            reducetasks.append(self.submit_task(exec_reduce, input_data=(result,), modules=modules, dep_funcs=dep_funcs))
+
+        last_input = []
+        for task in reducetasks:
+            res_task,result = self.get_result(task)
+            print "return:", res_task, result
+            #task = self.submit_task(exec_reduce, input_data=(result,), modules=modules, dep_funcs=dep_funcs)
+            last_input.append(result)
+                
+        lasttask = self.submit_task_mapreduce2(new_maintask, finish, input_data=(last_input,), modules=modules, dep_funcs=dep_funcs)
+        lasttask.is_task_finished(wait=True)
+        
+        new_maintask.task_finished()
+            
     def get_result(self, task=None, blocking=True):
         """Gets the result of the executed task.
         If task is None, return the result of the next finished task.
@@ -325,10 +437,16 @@ class PyMW_Master:
             task.cleanup()
         
         for exec_file in self._function_source:
-            os.remove(self._function_source[exec_file][2])
+            #os.remove(self._function_source[exec_file][2])
+            pass
         
         try:
-            os.rmdir(self._task_dir_name)
+            #os.rmdir(self._task_dir_name)
+            pass
         except OSError:
             pass
 
+    
+def finish(list=[]):
+    
+    return list
