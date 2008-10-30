@@ -12,6 +12,8 @@ import os
 import signal
 import threading
 import Queue
+import cPickle
+import cStringIO
 
 """On worker restarting:
 Multicore systems cannot handle worker restarts - recording PIDs
@@ -52,10 +54,12 @@ class MulticoreInterface:
 			if sys.platform.startswith("win"): cf=0x08000000
 			else: cf=0
 			
-			worker._exec_process = subprocess.Popen(args=[self._python_loc, task._executable, task._input_arg,
-					task._output_arg], creationflags=cf, stderr=subprocess.PIPE)
-			#print self._python_loc , task._executable, task._input_arg,	task._output_arg
-			#print "working:",os.getcwd()
+			tmp_in = task._input_arg[task._task_name].getvalue()
+			task._input_arg[task._task_name].close()
+			print "tmp",tmp_in
+			#worker._exec_process = subprocess.Popen(args=[self._python_loc, task._executable, task._input_arg,
+			#		task._output_arg], creationflags=cf, stderr=subprocess.PIPE)
+			worker._exec_process = subprocess.Popen(args=[self._python_loc, task._executable, tmp_in, task._output_arg], creationflags=cf, stderr=subprocess.PIPE)
 			proc_stdout, proc_stderr = worker._exec_process.communicate()   # wait for the process to finish
 			retcode = worker._exec_process.returncode
 			task_error = None
@@ -79,16 +83,16 @@ class MulticoreInterface:
 			"num_active_workers": self._num_workers-len(self._worker_list)}
 
 	def pymw_get_input():
-		#print "get_input"
-		infile = open(sys.argv[1], 'r')
-		obj = cPickle.Unpickler(infile).load()
-		infile.close()
+		#infile = open(sys.argv[1], 'r')
+		#obj = cPickle.Unpickler(infile).load()
+		#infile.close()
+		obj = cPickle.Unpickler(cStringIO.StringIO(sys.argv[1])).load()
 		return obj
 	
 	def pymw_return_output(output):
-		#print "return_output"
 		outfile = open(sys.argv[2], 'w')
 		cPickle.Pickler(outfile).dump(output)
 		outfile.close()
+		return output
 
 

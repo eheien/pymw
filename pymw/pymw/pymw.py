@@ -17,7 +17,9 @@ import interfaces.mpi
 import interfaces.boinc
 import logging
 import inspect
-from pymw_app import *
+import textwrap
+import cStringIO
+#from pymw_app import *
 
 class PyMW_List:
     def __init__(self):
@@ -73,7 +75,7 @@ class InterfaceException(Exception):
 class PyMW_Task:
     """Represents a task to be executed."""
     def __init__(self, task_name, executable, finished_queue, input_data=None,
-                 input_arg=None, output_arg=None, file_loc="tasks"):
+                 input_arg=None, output_arg=None, file_loc="tasks", interface="multicore"):
         self._finish_event = threading.Event()
         
         # Make sure executable is valid
@@ -85,12 +87,25 @@ class PyMW_Task:
         self._input_data = input_data
         self._output_data = None
         self._task_name = task_name
+        self._interface=interface
 
-        # Set the input and output file locations
+        # Set the input and output file locations        
         if input_arg:
             self._input_arg = input_arg
+            logging.info("Pickling task "+str(self)+" into file "+self._input_arg)
+            input_data_file = open(self._input_arg, 'w')
+            cPickle.Pickler(input_data_file).dump(input_data)
+            input_data_file.close()
+        elif str(self._interface).find(str(interfaces.multicore.MulticoreInterface)) >= 0:
+            self._input_arg={}
+            self._input_arg[self._task_name]=cStringIO.StringIO()    
+            cPickle.Pickler(self._input_arg[self._task_name]).dump(input_data)
         else:
             self._input_arg = file_loc + "/in_" + self._task_name + ".dat"
+            logging.info("Pickling task "+str(self)+" into file "+self._input_arg)
+            input_data_file = open(self._input_arg, 'w')
+            cPickle.Pickler(input_data_file).dump(input_data)
+            input_data_file.close()
         
         if output_arg:
             self._output_arg = output_arg
@@ -98,10 +113,13 @@ class PyMW_Task:
             self._output_arg = file_loc + "/out_" + self._task_name + ".dat"
 
         # Pickle the input data
+        """
         logging.info("Pickling task "+str(self)+" into file "+self._input_arg)
         input_data_file = open(self._input_arg, 'w')
         cPickle.Pickler(input_data_file).dump(input_data)
         input_data_file.close()
+        """
+        #cPickle.Pickler(self._input_arg[self._task_name]).dump(input_data)
 
         # Task time bookkeeping
         self._times = {"submit_time": time.time(), "execute_time": 0, "finish_time": 0}
@@ -162,15 +180,17 @@ class PyMW_Task:
 
     def cleanup(self):
         try:
-            os.remove(self._input_arg)
+            if str(self._interface).find(str(interfaces.multicore.MulticoreInterface)) == -1:
+                os.remove(self._input_arg)
             os.remove(self._output_arg)
+            pass
         except OSError:
             pass
 
 class PyMW_Task_MapReduce(PyMW_Task):
     """Represents a task to be executed."""
     def __init__(self, task_name, executable, finished_queue, input_data=None,
-                 input_arg=None, output_arg=None, file_loc="tasks"):
+                 input_arg=None, output_arg=None, file_loc="tasks", interface="multicore"):
         self._finish_event = threading.Event()
         
         # Make sure executable is valid
@@ -182,6 +202,7 @@ class PyMW_Task_MapReduce(PyMW_Task):
         self._input_data = input_data
         self._output_data = None
         self._task_name = task_name
+        self._interface=interface
 
         # Set the input and output file locations
         if input_arg:
@@ -195,7 +216,7 @@ class PyMW_Task_MapReduce(PyMW_Task):
             self._output_arg = file_loc + "/out_" + self._task_name + ".dat"
 
         # Pickle the input data
-        logging.info("Pickling task "+str(self)+" into file "+self._input_arg)
+        #logging.info("Pickling task "+str(self)+" into file "+self._input_arg)
         #input_data_file = open(self._input_arg, 'w')
         #cPickle.Pickler(input_data_file).dump(input_data)
         #input_data_file.close()
@@ -241,7 +262,8 @@ class PyMW_Scheduler:
 
 class PyMW_Master:
     """Provides functions for users to submit tasks to the underlying interface."""
-    def __init__(self, interface=None, loglevel=logging.CRITICAL):
+    #def __init__(self, interface=None, loglevel=logging.CRITICAL):
+    def __init__(self, interface=None, loglevel=logging.DEBUG):
         logging.basicConfig(level=loglevel, format="%(asctime)s %(levelname)s %(message)s")
 
         if interface:
@@ -277,25 +299,28 @@ class PyMW_Master:
         # ERIC: work with all interfaces.  Rather than searching for "MulticoreInterface"
         # ERIC: here, is there a way to test if self._interface contains the pymw_get_input
         # ERIC: and pymw_return_output functions?
-        if str(self._interface).find(str(interfaces.multicore.MulticoreInterface)):
-            all_funcs = (main_func,)+dep_funcs+(interfaces.multicore.pymw_get_input, interfaces.multicore.pymw_return_output)
+        if str(self._interface).find(str(interfaces.multicore.MulticoreInterface)) >= 0:
+            all_funcs = (main_func,)+dep_funcs+(self._interface.pymw_get_input, self._interface.pymw_return_output)
         else:
             # ERIC: this looks good.  Just to simplify things, could you move the pymw_get_input
             # ERIC: and pymw_return_output functions into this file (pymw.py), then
             # ERIC: delete pymw_app.py?
-            all_funcs = (main_func,)+dep_funcs+(pymw_get_input, pymw_return_output)
+            all_funcs = (main_func,)+dep_funcs+(self.pymw_get_input, self.pymw_return_output)        
         func_hash = hash(all_funcs)
         if not self._function_source.has_key(func_hash):
-            func_sources = [inspect.getsource(func) for func in all_funcs]
+            func_sources = [textwrap.dedent(inspect.getsource(func)) for func in all_funcs]
             self._function_source[func_hash] = [main_func.func_name, func_sources, file_name]
         else:
             return
         
         func_data = self._function_source[func_hash]
         func_file = open(file_name, "w")
-        for mod in modules+("cPickle", "sys"):
+        #for mod in modules+("cPickle", "sys"):
+        for mod in modules+("cPickle", "sys", "cStringIO"):
             func_file.write("import "+mod+"\n")
         func_file.writelines(func_data[1])
+        if func_data[0]=="<lambda>":
+            func_data[0]="finish"
         func_file.write("\npymw_return_output("+func_data[0]+"(*pymw_get_input()))\n")
         func_file.close()
         
@@ -318,7 +343,7 @@ class PyMW_Master:
         
         new_task = PyMW_Task(task_name=task_name, executable=exec_file_name,
                              finished_queue=self._finished_tasks, input_data=input_data,
-                             file_loc=self._task_dir_name)
+                             file_loc=self._task_dir_name, interface=self._interface)
         
         self._submitted_tasks.append(new_task)
         self._queued_tasks.append(item=new_task)
@@ -345,12 +370,12 @@ class PyMW_Master:
     def submit_task_mapreduce2(self, maintask, executable, input_data=None, modules=(), dep_funcs=()):
         
         task_name = str(maintask)
-        exec_file_name = self._task_dir_name+"/"+str(executable.func_name)
+        exec_file_name = self._task_dir_name+"/"+"finish"
         self._setup_exec_file(exec_file_name, executable, modules, dep_funcs)
         
         new_task = PyMW_Task(task_name=task_name, executable=exec_file_name,
                              finished_queue=self._finished_tasks, input_data=input_data,
-                             file_loc=self._task_dir_name)
+                             file_loc=self._task_dir_name, interface=self._interface)
         
         self._submitted_tasks.append(new_task)
         self._queued_tasks.append(item=new_task)
@@ -367,12 +392,10 @@ class PyMW_Master:
         split_data = []
         for i in range(num_worker):
             split_data.append(input_data[i*per:(i+1)*per])
-        print split_data
-        #split = [input[i*per:(i+1)*per] for i in range(num_worker)]
+        logging.debug("mapreduce_splitdata:"+str(split_data))
         
         maptasks = []            
         for i in range(num_worker):
-            #task = self.submit_task(exec_map , input_data=(split_data[i],), modules=modules, dep_funcs=dep_funcs)
             maptasks.append(self.submit_task(exec_map , input_data=(split_data[i],), modules=modules, dep_funcs=dep_funcs))
         
         reducetasks = []
@@ -380,17 +403,18 @@ class PyMW_Master:
             res_task,result = self.get_result(task)
             # ERIC: if you want to print out debugging information here, I'd recommend
             # ERIC: the logging module. See PyMW_Scheduler for examples of how to use it
-            print "return:", res_task, result
-            #task = self.submit_task(exec_reduce, input_data=(result,), modules=modules, dep_funcs=dep_funcs)
+            logging.debug("map_return:"+str(res_task)+" "+str(result))
             reducetasks.append(self.submit_task(exec_reduce, input_data=(result,), modules=modules, dep_funcs=dep_funcs))
 
         last_input = []
         for task in reducetasks:
             res_task,result = self.get_result(task)
-            print "return:", res_task, result
-            #task = self.submit_task(exec_reduce, input_data=(result,), modules=modules, dep_funcs=dep_funcs)
+            logging.debug("reduce_return:"+str(res_task)+" "+str(result))
             last_input.append(result)
+        
+        finish = lambda x:x
                 
+        #lasttask = self.submit_task(finish, input_data=(last_input,), modules=modules, dep_funcs=dep_funcs)
         lasttask = self.submit_task_mapreduce2(new_maintask, finish, input_data=(last_input,), modules=modules, dep_funcs=dep_funcs)
         lasttask.is_task_finished(wait=True)
         
@@ -445,17 +469,28 @@ class PyMW_Master:
         # ERIC: if you want to keep the files for debugging, you could add a variable
         # ERIC: like "dont_delete_files" that lets the user decide whether to keep them
         for exec_file in self._function_source:
-            #os.remove(self._function_source[exec_file][2])
+            os.remove(self._function_source[exec_file][2])
             pass
         
         try:
-            #os.rmdir(self._task_dir_name)
+            os.rmdir(self._task_dir_name)
             pass
         except OSError:
             pass
 
+    def pymw_get_input():
+        infile = open(sys.argv[1], 'r')
+        obj = cPickle.Unpickler(infile).load()
+        infile.close()
+        return obj
+    
+    def pymw_return_output(output):
+        outfile = open(sys.argv[2], 'w')
+        cPickle.Pickler(outfile).dump(output)
+        outfile.close()
+
 # ERIC: try to program mapreduce so this function isn't needed.
 # ERIC: at worst, use a lambda function inside mapreduce so you can delete this finish() function
-def finish(list=[]):
-    
-    return list
+#def finish(list=[]):
+#    
+#    return list
