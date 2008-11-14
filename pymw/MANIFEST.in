@@ -1,4 +1,4 @@
-include examples/*n*.py
+include examples/*.py
 include README
 include COPYING
 include pymw/interfaces/assimilator*
