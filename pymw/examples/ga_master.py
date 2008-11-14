@@ -1,11 +1,59 @@
 #!/usr/bin/env python
 
 from pymw import *
-#import pymw.interfaces.multicore
-#import pymw.interfaces.mpi
-#import pymw.interfaces.boinc
 import time
 from optparse import OptionParser
+from math import *
+from random import *
+
+def fitness_func(ind):
+    return reduce(lambda x, y: x+y, ind)
+
+def mutate(ind, mut_rate):
+    for i in range(len(ind)):
+        if random() < mut_rate:
+            ind[i] = 1-ind[i]
+
+def select(fitness, ind_set):
+    total_fit = reduce(lambda x, y: x+y, fitness)
+    spin_val = random()*total_fit
+    ind = 0
+    while spin_val >= 0:
+        spin_val -= fitness[ind]
+        ind += 1
+    return ind_set[ind-1]
+
+def crossover(ind1, ind2):
+    cpt = randint(0,len(ind1))
+    new_ind1 = ind1[:cpt]+ind2[cpt:]
+    new_ind2 = ind2[:cpt]+ind1[cpt:]
+    
+    return new_ind1, new_ind2
+
+def perform_ga(num_inds, gene_len, mut_rate, num_gens, cross_rate, ind_set):
+	for gen in range(num_gens):
+	    fitness = [fitness_func(ind) for ind in ind_set]
+	    total_fit = reduce(lambda x, y: x+y, fitness)
+	    avg_fit = total_fit/len(ind_set)
+	    max_fit = reduce(lambda x, y: max(x,y), fitness)
+	    new_ind_set = []
+	    num_crossovers = num_inds*cross_rate
+	    for i in range(num_inds/2):
+	        parent1 = select(fitness, ind_set)
+	        parent2 = select(fitness, ind_set)
+	        if random() < cross_rate:
+	            child1, child2 = crossover(parent1, parent2)
+	            mutate(child1, mut_rate)
+	            mutate(child2, mut_rate)
+	            new_ind_set.append(child1)
+	            new_ind_set.append(child2)
+	        else:
+	            new_ind_set.append(parent1)
+	            new_ind_set.append(parent2)
+	    ind_set = new_ind_set
+	
+	return [total_fit, avg_fit, max_fit, fitness, ind_set]
+
 
 parser = OptionParser(usage="usage: %prog")
 parser.add_option("-i", "--interface", dest="interface", default="multicore", help="specify the interface (multicore/mpi/boinc)", metavar="INTERFACE")
@@ -33,14 +81,11 @@ pymw_master = pymw.PyMW_Master(interface=interface_obj)
 
 post_init_time = time.time()
 
-input_dict = {}
 num_inds = 10
 gene_len = 10
-input_dict["num_inds"] = num_inds
-input_dict["gene_len"] = gene_len
-input_dict["mut_rate"] = 1./gene_len
-input_dict["num_gens"] = 50
-input_dict["cross_rate"] = 0.7
+num_gens = 50
+mut_rate = 1./gene_len
+cross_rate = 0.7
 
 gene_pool = [[randint(0,1) for i in range(gene_len)] for n in range(n_workers*num_inds)]
 

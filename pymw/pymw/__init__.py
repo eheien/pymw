@@ -1,2 +1,2 @@
-__all__ = ["pymw", "pymw_app"]
+__all__ = ["pymw"]
 

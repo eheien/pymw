@@ -56,10 +56,8 @@ class MulticoreInterface:
 			
 			tmp_in = task._input_arg[task._task_name].getvalue()
 			task._input_arg[task._task_name].close()
-			print "tmp",tmp_in
-			#worker._exec_process = subprocess.Popen(args=[self._python_loc, task._executable, task._input_arg,
-			#		task._output_arg], creationflags=cf, stderr=subprocess.PIPE)
-			worker._exec_process = subprocess.Popen(args=[self._python_loc, task._executable, tmp_in, task._output_arg], creationflags=cf, stderr=subprocess.PIPE)
+			worker._exec_process = subprocess.Popen(args=[self._python_loc, task._executable, tmp_in, task._output_arg],
+												    creationflags=cf, stderr=subprocess.PIPE)
 			proc_stdout, proc_stderr = worker._exec_process.communicate()   # wait for the process to finish
 			retcode = worker._exec_process.returncode
 			task_error = None

@@ -19,7 +19,6 @@ import logging
 import inspect
 import textwrap
 import cStringIO
-#from pymw_app import *
 
 class PyMW_List:
     def __init__(self):
@@ -262,8 +261,7 @@ class PyMW_Scheduler:
 
 class PyMW_Master:
     """Provides functions for users to submit tasks to the underlying interface."""
-    #def __init__(self, interface=None, loglevel=logging.CRITICAL):
-    def __init__(self, interface=None, loglevel=logging.DEBUG):
+    def __init__(self, interface=None, loglevel=logging.CRITICAL):
         logging.basicConfig(level=loglevel, format="%(asctime)s %(levelname)s %(message)s")
 
         if interface:
