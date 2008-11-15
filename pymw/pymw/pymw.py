@@ -287,8 +287,10 @@ class PyMW_Master:
         if func_data[0]=="<lambda>":
             func_data[0]="finish"
         func_file.write("try:\n")
+        func_file.write("\tinput_data = pymw_read_location(None, sys.argv[1])\n")
+        func_file.write("\tif not input_data: input_data = ()\n")
         func_file.write("\tpymw_write_location(None, "+func_data[0]+
-                        "(*pymw_read_location(None, sys.argv[1])), sys.argv[2])\n")
+                        "(*input_data), sys.argv[2])\n")
         func_file.write("except Exception, e:\n")
         func_file.write("\texit(e)\n")
         func_file.close()
