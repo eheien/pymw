@@ -253,6 +253,7 @@ class PyMW_Scheduler:
                                            args=(next_task, worker))
             task_thread.start()
             next_task = self._task_queue.pop(blocking=False)
+        
         logging.info("PyMW_Scheduler finished")
         self._running = False
     
@@ -300,10 +301,11 @@ class PyMW_Master:
         if str(self._interface).find(str(interfaces.multicore.MulticoreInterface)) >= 0:
             all_funcs = (main_func,)+dep_funcs+(self._interface.pymw_get_input, self._interface.pymw_return_output)
         else:
-            # ERIC: this looks good.  Just to simplify things, could you move the pymw_get_input
-            # ERIC: and pymw_return_output functions into this file (pymw.py), then
-            # ERIC: delete pymw_app.py?
-            all_funcs = (main_func,)+dep_funcs+(self.pymw_get_input, self.pymw_return_output)        
+            # If the interface doesn't provide methods for communicating with the workers,
+            # use the default
+            all_funcs = (main_func,)+dep_funcs+(self.pymw_get_input, self.pymw_return_output) 
+        
+        # Get the source code for the necessary functions       
         func_hash = hash(all_funcs)
         if not self._function_source.has_key(func_hash):
             func_sources = [textwrap.dedent(inspect.getsource(func)) for func in all_funcs]
@@ -327,11 +329,13 @@ class PyMW_Master:
         Returns the created task for later use.
         executable can be either a filename (Python script) or a function."""
         
+        # Check if the executable is a Python function or a script
         if callable(executable):
             task_name = str(executable.func_name)+"_"+str(self._cur_task_num)
             exec_file_name = self._task_dir_name+"/"+str(executable.func_name)
             self._setup_exec_file(exec_file_name, executable, modules, dep_funcs)
         elif isinstance(executable, str):
+            # TODO: test here for existence of script
             task_name = str(executable)+"_"+str(self._cur_task_num)
             exec_file_name = executable
         else:
@@ -399,8 +403,6 @@ class PyMW_Master:
         reducetasks = []
         for task in maptasks:
             res_task,result = self.get_result(task)
-            # ERIC: if you want to print out debugging information here, I'd recommend
-            # ERIC: the logging module. See PyMW_Scheduler for examples of how to use it
             logging.debug("map_return:"+str(res_task)+" "+str(result))
             reducetasks.append(self.submit_task(exec_reduce, input_data=(result,), modules=modules, dep_funcs=dep_funcs))
 
@@ -463,9 +465,6 @@ class PyMW_Master:
         for task in self._submitted_tasks:
             task.cleanup()
         
-        # ERIC: try not to comment out this sort of cleaning code
-        # ERIC: if you want to keep the files for debugging, you could add a variable
-        # ERIC: like "dont_delete_files" that lets the user decide whether to keep them
         for exec_file in self._function_source:
             os.remove(self._function_source[exec_file][2])
             pass
@@ -486,9 +485,3 @@ class PyMW_Master:
         outfile = open(sys.argv[2], 'w')
         cPickle.Pickler(outfile).dump(output)
         outfile.close()
-
-# ERIC: try to program mapreduce so this function isn't needed.
-# ERIC: at worst, use a lambda function inside mapreduce so you can delete this finish() function
-#def finish(list=[]):
-#    
-#    return list
