@@ -5,6 +5,7 @@ import time
 from optparse import OptionParser
 import math
 import random
+import logging
 
 def fitness_func(ind):
     return reduce(lambda x, y: x+y, ind)
@@ -83,7 +84,7 @@ else:
     print "Interface", options.interface, "unknown."
     exit()
 
-pymw_master = pymw.PyMW_Master(interface=interface_obj)
+pymw_master = pymw.PyMW_Master(interface=interface_obj, loglevel=logging.DEBUG)
 
 post_init_time = time.time()
 
@@ -102,7 +103,7 @@ for q in range(n_workers):
                             input_data=(random.random(), mut_rate, sub_gens, cross_rate, ind_set,),
                             modules=("random",),
                             dep_funcs=(crossover, select, mutate, fitness_func,))
-    
+
 gen_count = 0
 while gen_count < total_gens:
     gen_count += sub_gens

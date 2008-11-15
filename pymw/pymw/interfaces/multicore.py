@@ -10,6 +10,7 @@ import sys
 import ctypes
 import os
 import signal
+import errno
 import threading
 import Queue
 import cPickle
@@ -54,9 +55,9 @@ class MulticoreInterface:
 			if sys.platform.startswith("win"): cf=0x08000000
 			else: cf=0
 			
-			tmp_in = task._input_arg[task._task_name].getvalue()
-			task._input_arg[task._task_name].close()
-			worker._exec_process = subprocess.Popen(args=[self._python_loc, task._executable, tmp_in, task._output_arg],
+			#tmp_in = task._input_arg[task._task_name].getvalue()
+			#task._input_arg[task._task_name].close()
+			worker._exec_process = subprocess.Popen(args=[self._python_loc, task._executable, task._input_arg, task._output_arg],
 											    	creationflags=cf, stderr=subprocess.PIPE)
 			proc_stdout, proc_stderr = worker._exec_process.communicate()   # wait for the process to finish
 			retcode = worker._exec_process.returncode
@@ -67,8 +68,6 @@ class MulticoreInterface:
 		except OSError:
 			# TODO: check the actual error code
 			task_error = Exception("Could not find python")
-		except Exception:
-			task_error = Exception("Unknown error")
 		
 		worker._exec_process = None
 		task.task_finished(task_error)	# notify the task
@@ -81,18 +80,14 @@ class MulticoreInterface:
 	def get_status(self):
 		return {"num_total_workers" : self._num_workers,
 			"num_active_workers": self._num_workers-len(self._worker_list)}
-
-	def pymw_get_input():
-		#infile = open(sys.argv[1], 'r')
-		#obj = cPickle.Unpickler(infile).load()
-		#infile.close()
-		obj = cPickle.Unpickler(cStringIO.StringIO(sys.argv[1])).load()
-		return obj
-	
-	def pymw_return_output(output):
-		outfile = open(sys.argv[2], 'w')
-		cPickle.Pickler(outfile).dump(output)
-		outfile.close()
-		return output
-
+    
+#	def pymw_read_location(selfobj, loc):
+#		obj = cPickle.Unpickler(cStringIO.StringIO(loc)).load()
+#		return obj
+#	
+#	def pymw_write_location(selfobj, output, loc):
+#		outfile = open(loc, 'w')
+#		cPickle.Pickler(outfile).dump(output)
+#		outfile.close()
+#		return output
 
