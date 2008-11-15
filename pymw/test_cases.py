@@ -5,6 +5,10 @@ import unittest
 def null_worker(in_data):
     return in_data
 
+# Function to test exception handling
+def err_worker():
+    return 0/0
+
 class TestPyMW(unittest.TestCase):
     def setUp(self):
         self.pymw_master = pymw.PyMW_Master()
@@ -33,6 +37,11 @@ class TestPyMW(unittest.TestCase):
         task = pymw_master.submit_task(executable='null_worker.py', input_data=1)
         self.assertRaises(Exception, pymw_master.get_result, task)
 
+    # Tests that exceptions from the worker get passed back correctly
+    def testProgramError(self):
+        task = self.pymw_master.submit_task(err_worker)
+        self.assertRaises(Exception, self.pymw_master.get_result, task)
+        
     # TODO: add test case for killing workers
     
     # Tests standard operation with null worker program
