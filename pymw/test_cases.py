@@ -40,7 +40,10 @@ class TestPyMW(unittest.TestCase):
     # Tests that exceptions from the worker get passed back correctly
     def testProgramError(self):
         task = self.pymw_master.submit_task(err_worker)
-        self.assertRaises(Exception, self.pymw_master.get_result, task)
+        try:
+            self.pymw_master.get_result(task)
+        except Exception, e:
+            self.assert_(e[1].count("integer division or modulo by zero")>0)
         
     # TODO: add test case for killing workers
     
