@@ -2,6 +2,7 @@
 
 from pymw import *
 import time
+import logging
 from optparse import OptionParser
 
 def null_worker(in_data):
@@ -10,7 +11,7 @@ def null_worker(in_data):
 parser = OptionParser(usage="usage: %prog")
 parser.add_option("-i", "--interface", dest="interface", default="multicore", help="specify the interface (multicore/mpi/boinc)", metavar="INTERFACE")
 parser.add_option("-n", "--num_workers", dest="n_workers", default="4", help="number of workers", metavar="N")
-parser.add_option("-t", "--num_tasks", dest="n_tasks", default="10", help="number of tasks", metavar="N")
+parser.add_option("-t", "--num_tasks", dest="n_tasks", default="50", help="number of tasks", metavar="N")
 parser.add_option("-p", "--project_home", dest="p_home", default="", help="directory of the project (BOINC interface)", metavar="DIR")
 options, args = parser.parse_args()
 
@@ -31,7 +32,7 @@ else:
 pymw_master = pymw.PyMW_Master(interface=interface_obj)
 
 post_init_time = time.time()
-tasks = [pymw_master.submit_task(null_worker, input_data=(i,)) for i in range(n_tasks)]
+tasks = [pymw_master.submit_task(null_worker, input_data=(range(100000),)) for i in range(n_tasks)]
 
 for task in tasks:
 	res_task, res = pymw_master.get_result(task)
