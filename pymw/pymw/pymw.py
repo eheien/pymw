@@ -16,6 +16,7 @@ import errno
 import interfaces.multicore
 import interfaces.mpi
 import interfaces.boinc
+import interfaces.condor
 import logging
 import inspect
 import textwrap
