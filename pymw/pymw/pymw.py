@@ -124,7 +124,11 @@ class PyMW_Task:
         if task_err:
             logging.info("Task "+str(self)+" had an error")
         else:
-            self._output_data = self._get_result_func(self._output_arg)
+            try:
+                self._output_data = self._get_result_func(self._output_arg)
+            except:
+                self._output_data = None
+                self._error = Exception("Error reading task result")
             logging.info("Task "+str(self)+" finished")
 
         self._times["finish_time"] = time.time()

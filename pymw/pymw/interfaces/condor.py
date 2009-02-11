@@ -10,6 +10,7 @@ import os
 import time
 import sys
 import cPickle
+import threading
 
 # TODO: The second two arguments aren't necessary, but I need them to
 # TODO: prevent the worker from crashing.  Fix it.
@@ -28,10 +29,48 @@ Queue"""
 
 class CondorInterface:
     """Provides a simple interface for desktop grids running Condor."""
-    def __init__(self, python_loc="C:/python25/python.exe", condor_bin_loc="C:/condor/bin/"):
-        self._python_loc = python_loc
-        self._condor_bin_loc = condor_bin_loc
-    
+    def __init__(self, python_loc="", condor_submit_loc=""):
+        if sys.platform.startswith("win"):
+            if python_loc != "": self._python_loc = python_loc
+            else: self._python_loc = "python.exe"
+            if condor_submit_loc != "": self._condor_submit_loc = condor_submit_loc
+            else: self._condor_submit_loc = "condor_submit.exe"
+        else:
+            if python_loc != "": self._python_loc = python_loc
+            else: self._python_loc = "/usr/local/bin/python"
+            if condor_submit_loc != "": self._condor_submit_loc = condor_submit_loc
+            else: self._condor_submit_loc = "condor_submit"
+        self._task_list = []
+        self._task_list_lock = threading.Lock()
+        self._scan_finished_tasks = True
+        self._task_finish_thread = threading.Thread(target=self._get_finished_tasks)
+        self._task_finish_thread.start()
+        
+    def _get_finished_tasks(self):
+        while self._scan_finished_tasks:
+            self._task_list_lock.acquire()
+            for task in self._task_list:
+                # Check for the output file
+                # TODO: also check for an error file
+                if os.access(task[0]._output_arg, os.F_OK):
+                    # Delete log, error and submission files
+                    os.remove(task[1])
+                    os.remove(task[2])
+                    os.remove(task[3])
+                    task[0].task_finished(None)    # notify the task
+                    self._task_list.remove(task)
+            
+#            err_file = open(err_file_name,"r")
+#            if err_file:
+#                err_output = err_file.read()
+#                err_file.close()
+#            else: err_output = ""
+#            if err_output != "" :
+#                task_error = Exception("Executable failed with error:\n"+err_output)
+            self._task_list_lock.release()
+            time.sleep(0.5)
+        print "exiting task scan"
+        
     def reserve_worker(self):
         return None
     
@@ -60,37 +99,27 @@ class CondorInterface:
         
         try:
             # Submit the template file through condor_submit
-            cout = subprocess.Popen(args=[self._condor_bin_loc+"condor_submit.exe", submit_file_name],
+            submit_process = subprocess.Popen(args=[self._condor_submit_loc, submit_file_name],
                                     creationflags=cf, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-            proc_stdout, proc_stderr = cout.communicate()   # wait for the process to finish
-            #print proc_stdout
-            #print proc_stderr
-            # TODO: check stdout, stderr for problems
-
-            # Wait until the output file is generated
-            # TODO: also check for an error file
-            # TODO: put this check in a separate thread
-            while os.access(task._output_arg, os.F_OK) == False:
-                time.sleep(0.1)
+            # Wait for the process to finish
+            proc_stdout, proc_stderr = submit_process.communicate()
             
-            task_error = None
-            err_file = open(err_file_name,"r")
-            if err_file: err_output = err_file.read()
-            else: err_output = ""
-            if err_output != "" :
-                task_error = Exception("Executable failed with error:\n"+err_output)
-            err_file.close()
-        
+            # TODO: check stdout for problems
+            if proc_stderr != "":
+                task.task_finished(Exception("condor_submit failed with error:\n"+proc_stderr))
+                return
+            
+            self._task_list_lock.acquire()
+            self._task_list.append([task, err_file_name, log_file_name, submit_file_name])
+            self._task_list_lock.release()
+            
         except OSError:
             # TODO: check the actual error code
-            task_error = Exception("Could not find condor_submit")
-        
-        # Delete log, error and submission files
-        #os.remove(err_file_name)
-        #os.remove(log_file_name)
-        #os.remove(submit_file_name)
-        task.task_finished(task_error)    # notify the task
-
+            task.task_finished(Exception("Could not find condor_submit"))
+    
+    def _cleanup(self):
+        self._scan_finished_tasks = False
+    
     def pymw_read_location(selfobj, loc):
         if not selfobj:
             obj = cPickle.Unpickler(sys.stdin).load()
