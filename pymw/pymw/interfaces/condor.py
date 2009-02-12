@@ -32,9 +32,9 @@ class CondorInterface:
     def __init__(self, python_loc="", condor_submit_loc=""):
         if sys.platform.startswith("win"):
             if python_loc != "": self._python_loc = python_loc
-            else: self._python_loc = "python.exe"
+            else: self._python_loc = "C:\\Python25\\python.exe"
             if condor_submit_loc != "": self._condor_submit_loc = condor_submit_loc
-            else: self._condor_submit_loc = "condor_submit.exe"
+            else: self._condor_submit_loc = "C:\\condor\\bin\\condor_submit.exe"
         else:
             if python_loc != "": self._python_loc = python_loc
             else: self._python_loc = "/usr/local/bin/python"
@@ -52,7 +52,10 @@ class CondorInterface:
             for task in self._task_list:
                 # Check for the output file
                 # TODO: also check for an error file
-                if os.access(task[0]._output_arg, os.F_OK):
+                log_file = open(task[2],"r")
+                log_data = log_file.read()
+                log_file.close()
+                if log_data.count("Job terminated") > 0:
                     # Delete log, error and submission files
                     os.remove(task[1])
                     os.remove(task[2])
@@ -68,7 +71,7 @@ class CondorInterface:
 #            if err_output != "" :
 #                task_error = Exception("Executable failed with error:\n"+err_output)
             self._task_list_lock.release()
-            time.sleep(0.5)
+            time.sleep(0.2)
         print "exiting task scan"
         
     def reserve_worker(self):
@@ -87,6 +90,12 @@ class CondorInterface:
         condor_template = condor_template.replace("<PYMW_ERROR/>", err_file_name)
         log_file_name = "tasks/"+task._task_name+".log"
         condor_template = condor_template.replace("<PYMW_LOG/>", log_file_name)
+        
+        # Remove old files so we don't have problems
+        try: os.remove(err_file_name)
+        except: pass
+        try: os.remove(log_file_name)
+        except: pass
         
         # Write the template to a file
         submit_file_name = "tasks/"+str(task._task_name)+"_condor"
@@ -115,7 +124,7 @@ class CondorInterface:
             
         except OSError:
             # TODO: check the actual error code
-            task.task_finished(Exception("Could not find condor_submit"))
+            task.task_finished(Exception("Could not find task submission program "+self._condor_submit_loc))
     
     def _cleanup(self):
         self._scan_finished_tasks = False

@@ -104,6 +104,12 @@ class PyMW_Task:
         else:
             self._output_arg = file_loc + "/out_" + self._task_name + ".dat"
 
+        # Remove any old output files
+        try:
+            os.remove(self._output_arg)
+        except:
+            pass
+        
         # Task time bookkeeping
         self._times = {"submit_time": time.time(), "execute_time": 0, "finish_time": 0}
 
@@ -128,7 +134,7 @@ class PyMW_Task:
                 self._output_data = self._get_result_func(self._output_arg)
             except:
                 self._output_data = None
-                self._error = Exception("Error reading task result")
+                self._error = Exception("Error reading task result "+self._output_arg)
             logging.info("Task "+str(self)+" finished")
 
         self._times["finish_time"] = time.time()
@@ -315,7 +321,7 @@ class PyMW_Master:
             task_name = str(executable)+"_"+str(self._cur_task_num)
             exec_file_name = executable
         else:
-            raise TaskException("executable must be a filename or function")
+            raise TaskException("Executable must be a filename or function")
         
         self._cur_task_num += 1
         
