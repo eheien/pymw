@@ -37,6 +37,9 @@ if options.interface == "multicore":
 elif options.interface == "mpi":
 	interface_obj = pymw.interfaces.mpi.MPIInterface(num_workers=n_workers)
 	num_tasks = n_workers-1
+elif options.interface == "condor":
+    interface_obj = pymw.interfaces.condor.CondorInterface()
+    num_tasks = n_workers
 elif options.interface == "boinc":
 	interface_obj = pymw.interfaces.boinc.BOINCInterface(project_home=options.p_home)
 	num_tasks = n_workers
@@ -67,6 +70,6 @@ end_time = time.time()
 
 pi_estimate = 4 * float(num_hits)/num_tests
 print pi_estimate, pi_estimate-math.pi
-print "Number of Workers:", str(n_workers)
+print "Number of Tasks:", str(num_tasks)
 print "Calculation time:", str(end_time-post_init_time)
 print "Total time:", str(end_time-start_time)

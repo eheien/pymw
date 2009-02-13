@@ -23,6 +23,8 @@ if options.interface == "multicore":
 	interface_obj = pymw.interfaces.multicore.MulticoreInterface(num_workers=n_workers)
 elif options.interface == "mpi":
 	interface_obj = pymw.interfaces.mpi.MPIInterface(num_workers=n_workers)
+elif options.interface == "condor":
+	interface_obj = pymw.interfaces.condor.CondorInterface()
 elif options.interface == "boinc":
 	interface_obj = pymw.interfaces.boinc.BOINCInterface(project_home=options.p_home)
 else:
