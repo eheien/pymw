@@ -228,6 +228,9 @@ class PyMW_Scheduler:
                 worker = self._interface.reserve_worker()
             except AttributeError:
                 worker = None
+            # Wait until other tasks have been submitted and the thread count decreases,
+            # otherwise we might exhaust the file descriptors
+            while threading.activeCount() > 100: time.sleep(0.1)
             next_task._times["execute_time"] = time.time()
             logging.info("Executing task "+str(next_task))
             task_thread = threading.Thread(target=self._interface.execute_task,

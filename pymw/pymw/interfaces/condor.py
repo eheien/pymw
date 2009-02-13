@@ -16,6 +16,7 @@ import threading
 # TODO: prevent the worker from crashing.  Fix it.
 CONDOR_TEMPLATE = """Universe = vanilla
 InitialDir = <INITIAL_DIR/>
+Requirements = (OpSys == "WINNT60" || OpSys == "WINNT51")
 Executable = <PYTHON_LOC/>
 Error = <PYMW_ERROR/>
 Log = <PYMW_LOG/>
@@ -55,9 +56,12 @@ class CondorInterface:
                 log_file.close()
                 if log_data.count("Job terminated") > 0:
                     # Delete log, error and submission files
-                    os.remove(task[1])
-                    os.remove(task[2])
-                    os.remove(task[3])
+                    try: os.remove(task[1])
+                    except: pass
+                    try: os.remove(task[2])
+                    except: pass
+                    try: os.remove(task[3])
+                    except: pass
                     task[0].task_finished(None)    # notify the task
                     self._task_list.remove(task)
             
@@ -99,9 +103,9 @@ class CondorInterface:
         
         # Write the template to a file
         submit_file_name = "tasks/"+str(task._task_name)+"_condor"
-        f = open(submit_file_name,"w")
-        f.write(condor_template)
-        f.close()
+        submit_file = open(submit_file_name,"w")
+        submit_file.write(condor_template)
+        submit_file.close()
         
         if sys.platform.startswith("win"): cf=0x08000000
         else: cf=0
