@@ -42,12 +42,10 @@ class CondorInterface:
             else: self._condor_submit_loc = "condor_submit"
         self._task_list = []
         self._task_list_lock = threading.Lock()
-        self._scan_finished_tasks = True
-        self._task_finish_thread = threading.Thread(target=self._get_finished_tasks)
-        self._task_finish_thread.start()
+        self._result_checker_running = False
         
     def _get_finished_tasks(self):
-        while self._scan_finished_tasks:
+        while True:
             self._task_list_lock.acquire()
             for task in self._task_list:
                 # Check for the output file
@@ -71,8 +69,10 @@ class CondorInterface:
 #            if err_output != "" :
 #                task_error = Exception("Executable failed with error:\n"+err_output)
             self._task_list_lock.release()
+            if len(self._task_list) == 0:
+                self._result_checker_running = False
+                return
             time.sleep(0.2)
-        print "exiting task scan"
         
     def reserve_worker(self):
         return None
@@ -121,6 +121,11 @@ class CondorInterface:
             self._task_list_lock.acquire()
             self._task_list.append([task, err_file_name, log_file_name, submit_file_name])
             self._task_list_lock.release()
+            
+            if not self._result_checker_running:
+                self._result_checker_running = True
+                self._task_finish_thread = threading.Thread(target=self._get_finished_tasks)
+                self._task_finish_thread.start()
             
         except OSError:
             # TODO: check the actual error code
