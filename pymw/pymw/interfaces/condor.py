@@ -3,7 +3,7 @@
 """
 
 __author__ = "Eric Heien <e-heien@ics.es.osaka-u.ac.jp>"
-__date__ = "06 February 2009"
+__date__ = "22 February 2009"
 
 import subprocess
 import os
@@ -44,6 +44,7 @@ class CondorInterface:
         self._task_list = []
         self._task_list_lock = threading.Lock()
         self._result_checker_running = False
+        self.pymw_interface_modules = "cPickle", "sys"
         
     def _get_finished_tasks(self):
         while True:
@@ -138,20 +139,20 @@ class CondorInterface:
     def _cleanup(self):
         self._scan_finished_tasks = False
     
-    def pymw_read_location(selfobj, loc):
-        if not selfobj:
-            obj = cPickle.Unpickler(sys.stdin).load()
-            return obj
-        else:
-            infile = open(loc, 'r')
-            obj = cPickle.Unpickler(infile).load()
-            infile.close()
-            return obj
+    def pymw_master_read(self, loc):
+        infile = open(loc, 'r')
+        obj = cPickle.Unpickler(infile).load()
+        infile.close()
+        return obj
     
-    def pymw_write_location(selfobj, output, loc):
-        if not selfobj:
-            print cPickle.dumps(output)
-        else:
-            outfile = open(loc, 'w')
-            cPickle.Pickler(outfile).dump(output)
-            outfile.close()
+    def pymw_master_write(self, output, loc):
+        outfile = open(loc, 'w')
+        cPickle.Pickler(outfile).dump(output)
+        outfile.close()
+    
+    def pymw_worker_read(loc):
+        obj = cPickle.Unpickler(sys.stdin).load()
+        return obj
+    
+    def pymw_worker_write(output, loc):
+        print cPickle.dumps(output)

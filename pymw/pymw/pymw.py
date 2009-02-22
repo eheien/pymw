@@ -13,14 +13,14 @@ import sys
 import types
 import atexit
 import errno
-import interfaces.multicore
-import interfaces.mpi
-import interfaces.boinc
-import interfaces.condor
 import logging
 import inspect
 import textwrap
-import cStringIO
+import interfaces.generic
+import interfaces.multicore
+import interfaces.mpi
+import interfaces.condor
+import interfaces.boinc
 
 class PyMW_List:
     def __init__(self):
@@ -166,11 +166,11 @@ class PyMW_Task:
         else:
             return None
 
-    def cleanup(self):
+    def cleanup(self, delete_files):
         try:
-            os.remove(self._input_arg)
-            os.remove(self._output_arg)
-            pass
+            if delete_files:
+                os.remove(self._input_arg)
+                os.remove(self._output_arg)
         except OSError:
             pass
 
@@ -231,10 +231,10 @@ class PyMW_Scheduler:
             # Wait until other tasks have been submitted and the thread count decreases,
             # otherwise we might exhaust the file descriptors
             while threading.activeCount() > 100: time.sleep(0.1)
-            next_task._times["execute_time"] = time.time()
             logging.info("Executing task "+str(next_task))
             task_thread = threading.Thread(target=self._interface.execute_task,
                                            args=(next_task, worker))
+            next_task._times["execute_time"] = time.time()
             task_thread.start()
             next_task = self._task_queue.pop(blocking=False)
         
@@ -252,7 +252,7 @@ class PyMW_Master:
         if interface:
             self._interface = interface
         else:
-            self._interface = interfaces.multicore.MulticoreInterface()
+            self._interface = interfaces.generic.GenericInterface()
         
         self._submitted_tasks = []
         self._queued_tasks = PyMW_List()
@@ -262,6 +262,7 @@ class PyMW_Master:
         self._task_dir_name = "tasks"
         self._cur_task_num = 0
         self._function_source = {}
+        self.pymw_interface_modules = "cPickle", "sys"
 
         # Make the directory for input/output files, if it doesn't already exist
         try:
@@ -279,10 +280,21 @@ class PyMW_Master:
         output data."""
         
         # If the interface doesn't provide methods for communicating with the workers, use default
+        all_funcs = (main_func,)+dep_funcs
         try:
-            all_funcs = (main_func,)+dep_funcs+(self._interface.pymw_read_location, self._interface.pymw_write_location)
+            all_funcs += (self._interface.pymw_worker_read, self._interface.pymw_worker_write)
         except AttributeError:
-            all_funcs = (main_func,)+dep_funcs+(self.pymw_read_location, self.pymw_write_location) 
+            all_funcs += (self.pymw_worker_read, self.pymw_worker_write) 
+
+        try:
+            interface_modules = self._interface.pymw_interface_modules
+        except AttributeError:
+            interface_modules = self.pymw_interface_modules
+        
+        try:
+            all_funcs += (self._interface.pymw_worker_func,)
+        except AttributeError:
+            all_funcs += (self.pymw_worker_func,)
         
         # Get the source code for the necessary functions       
         func_hash = hash(all_funcs)
@@ -295,18 +307,12 @@ class PyMW_Master:
         func_data = self._function_source[func_hash]
         func_file = open(file_name, "w")
         # TODO: make these interface-dependent
-        for mod in modules+("cPickle", "sys", "cStringIO"):
-            func_file.write("import "+mod+"\n")
+        for module_name in modules+interface_modules:
+            func_file.write("import "+module_name+"\n")
         func_file.writelines(func_data[1])
         if func_data[0]=="<lambda>":
             func_data[0]="finish"
-        func_file.write("try:\n")
-        func_file.write("\tinput_data = pymw_read_location(None, sys.argv[1])\n")
-        func_file.write("\tif not input_data: input_data = ()\n")
-        func_file.write("\tpymw_write_location(None, "+func_data[0]+
-                        "(*input_data), sys.argv[2])\n")
-        func_file.write("except Exception, e:\n")
-        func_file.write("\texit(e)\n")
+        func_file.write("pymw_worker_func("+func_data[0]+")\n")
         func_file.close()
         
     def submit_task(self, executable, input_data=None, modules=(), dep_funcs=()):
@@ -329,11 +335,11 @@ class PyMW_Master:
         self._cur_task_num += 1
         
         try:
-            store_func = self._interface.pymw_write_location
-            get_result_func = self._interface.pymw_read_location
+            store_func = self._interface.pymw_master_write
+            get_result_func = self._interface.pymw_master_read
         except AttributeError:
-            store_func = self.pymw_write_location
-            get_result_func = self.pymw_read_location
+            store_func = self.pymw_master_write
+            get_result_func = self.pymw_master_read
         
         new_task = PyMW_Task(task_name=task_name, executable=exec_file_name,
                              store_data_func=store_func, get_result_func=get_result_func,
@@ -456,25 +462,46 @@ class PyMW_Master:
             pass
         
         for task in self._submitted_tasks:
-            task.cleanup()
+            task.cleanup(self._delete_files)
         
         for exec_file in self._function_source:
-            os.remove(self._function_source[exec_file][2])
+            if self._delete_files:
+                os.remove(self._function_source[exec_file][2])
             pass
         
         try:
-            os.rmdir(self._task_dir_name)
+            if self._delete_files:
+                os.rmdir(self._task_dir_name)
             pass
         except OSError:
             pass
 
-    def pymw_read_location(selfobj, loc):
+    def pymw_master_read(self, loc):
         infile = open(loc, 'r')
         obj = cPickle.Unpickler(infile).load()
         infile.close()
         return obj
     
-    def pymw_write_location(selfobj, output, loc):
+    def pymw_master_write(self, output, loc):
         outfile = open(loc, 'w')
         cPickle.Pickler(outfile).dump(output)
         outfile.close()
+    
+    def pymw_worker_read(loc):
+        infile = open(loc, 'r')
+        obj = cPickle.Unpickler(infile).load()
+        infile.close()
+        return obj
+
+    def pymw_worker_write(output, loc):
+        outfile = open(loc, 'w')
+        cPickle.Pickler(outfile).dump(output)
+        outfile.close()
+
+    def pymw_worker_func(func_name_to_call):
+        try:
+            input_data = pymw_worker_read(sys.argv[1])
+            if not input_data: input_data = ()
+            pymw_worker_write(func_name_to_call(*input_data), sys.argv[2])
+        except Exception, e:
+            exit(e)

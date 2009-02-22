@@ -93,7 +93,7 @@ class BOINCInterface:
         out_file = task._output_arg.rpartition('/')[2]
         task_exe = task._executable.rpartition('/')[2]
 
-        # Block concurent threads until changing directories
+        # Block concurrent threads until changing directories
         logging.debug("Locking thread")
         lock = threading.Lock()
         lock.acquire()

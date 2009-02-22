@@ -32,7 +32,7 @@ class TestPyMW(unittest.TestCase):
 
     # Tests that using an invalid Python location returns an error
     def testBadPython(self):
-        interface = pymw.interfaces.multicore.MulticoreInterface(python_loc="/usr/local/dead_parrot/python")
+        interface = pymw.interfaces.generic.GenericInterface(python_loc="/usr/local/dead_parrot/python")
         pymw_master = pymw.PyMW_Master(interface)
         task = pymw_master.submit_task(executable='null_worker.py', input_data=1)
         self.assertRaises(Exception, pymw_master.get_result, task)
