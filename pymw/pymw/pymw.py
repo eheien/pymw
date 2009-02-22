@@ -232,14 +232,22 @@ class PyMW_Scheduler:
             # otherwise we might exhaust the file descriptors
             while threading.activeCount() > 100: time.sleep(0.1)
             logging.info("Executing task "+str(next_task))
-            task_thread = threading.Thread(target=self._interface.execute_task,
-                                           args=(next_task, worker))
-            next_task._times["execute_time"] = time.time()
+            task_thread = threading.Thread(target=self._task_executor,
+                                           args=(self._interface.execute_task, next_task, worker))
             task_thread.start()
             next_task = self._task_queue.pop(blocking=False)
         
         logging.info("PyMW_Scheduler finished")
         self._running = False
+    
+    # Use this wrapper to catch any interface exceptions,
+    # otherwise we get hanging threads
+    def _task_executor(self, execute_task_func, next_task, worker):
+        try:
+            next_task._times["execute_time"] = time.time()
+            execute_task_func(next_task, worker)
+        except Exception, e:
+            next_task.task_finished(e)
     
     def _exit(self):
         self._task_queue.append(None)

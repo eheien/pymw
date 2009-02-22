@@ -25,11 +25,14 @@ class Worker:
         self._exec_process = None
     
     def _kill(self):
-        if self._exec_process:
-            if sys.platform.startswith("win"):
-                ctypes.windll.kernel32.TerminateProcess(int(self._exec_process._handle), -1)
-            else:
-                os.kill(self._exec_process.pid, signal.SIGKILL)
+        try:
+            if self._exec_process:
+                if sys.platform.startswith("win"):
+                    ctypes.windll.kernel32.TerminateProcess(int(self._exec_process._handle), -1)
+                else:
+                    os.kill(self._exec_process.pid, signal.SIGKILL)
+        except:
+            pass
 
 class MulticoreInterface:
     """Provides a simple interface for single machine systems.
@@ -55,6 +58,7 @@ class MulticoreInterface:
         if sys.platform.startswith("win"): cf=0x08000000
         else: cf=0
         
+        # Pickle the input argument
         input_obj_str = cPickle.dumps(self._input_objs[task._input_arg])
         
         try:
