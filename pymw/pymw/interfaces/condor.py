@@ -12,8 +12,6 @@ import sys
 import cPickle
 import threading
 
-# TODO: The second two arguments aren't necessary, but I need them to
-# TODO: prevent the worker from crashing.  Fix it.
 CONDOR_TEMPLATE = """Universe = vanilla
 InitialDir = <INITIAL_DIR/>
 Requirements = (OpSys == "WINNT60" || OpSys == "WINNT51")
@@ -22,7 +20,7 @@ Error = <PYMW_ERROR/>
 Log = <PYMW_LOG/>
 Input = <PYMW_INPUT_FILE/>
 Output = <PYMW_OUTPUT_FILE/>
-Arguments = <PYMW_EXEC_NAME/> <PYMW_INPUT_FILE/> <PYMW_OUTPUT_FILE/>
+Arguments = <PYMW_EXEC_NAME/>
 ShouldTransferFiles = YES
 WhenToTransferOutput = ON_EXIT
 TransferInputFiles = <PYMW_EXEC_FILE/>
@@ -156,3 +154,29 @@ class CondorInterface:
     
     def pymw_worker_write(output, loc):
         print cPickle.dumps(output)
+
+    def pymw_worker_func(func_name_to_call):
+        try:
+            # Redirect stdout and stderr
+            old_stdout = sys.stdout
+            old_stderr = sys.stderr
+            sys.stdout = cStringIO.StringIO()
+            sys.stderr = cStringIO.StringIO()
+            # Get the input data
+            input_data = pymw_worker_read(0)
+            if not input_data: input_data = ()
+            # Execute the worker function
+            result = func_name_to_call(*input_data)
+            # Get any stdout/stderr printed during the worker execution
+            out_str = sys.stdout.getvalue()
+            err_str = sys.stderr.getvalue()
+            sys.stdout.close()
+            sys.stderr.close()
+            # Revert stdout/stderr to originals
+            sys.stdout = old_stdout
+            sys.stderr = old_stderr
+            pymw_worker_write([result, out_str, err_str], 0)
+        except Exception, e:
+            sys.stdout = old_stdout
+            sys.stderr = old_stderr
+            exit(e)

@@ -131,7 +131,7 @@ class PyMW_Task:
             logging.info("Task "+str(self)+" had an error")
         else:
             try:
-                self._output_data = self._get_result_func(self._output_arg)
+                self._output_data, self._stdout, self._stderr = self._get_result_func(self._output_arg)
             except:
                 self._output_data = None
                 self._error = Exception("Error reading task result "+self._output_arg)
@@ -270,7 +270,7 @@ class PyMW_Master:
         self._task_dir_name = "tasks"
         self._cur_task_num = 0
         self._function_source = {}
-        self.pymw_interface_modules = "cPickle", "sys"
+        self.pymw_interface_modules = "cPickle", "sys", "cStringIO"
 
         # Make the directory for input/output files, if it doesn't already exist
         try:
@@ -508,8 +508,26 @@ class PyMW_Master:
 
     def pymw_worker_func(func_name_to_call):
         try:
+            # Redirect stdout and stderr
+            old_stdout = sys.stdout
+            old_stderr = sys.stderr
+            sys.stdout = cStringIO.StringIO()
+            sys.stderr = cStringIO.StringIO()
+            # Get the input data
             input_data = pymw_worker_read(sys.argv[1])
             if not input_data: input_data = ()
-            pymw_worker_write(func_name_to_call(*input_data), sys.argv[2])
+            # Execute the worker function
+            result = func_name_to_call(*input_data)
+            # Get any stdout/stderr printed during the worker execution
+            out_str = sys.stdout.getvalue()
+            err_str = sys.stderr.getvalue()
+            sys.stdout.close()
+            sys.stderr.close()
+            # Revert stdout/stderr to originals
+            sys.stdout = old_stdout
+            sys.stderr = old_stderr
+            pymw_worker_write([result, out_str, err_str], sys.argv[2])
         except Exception, e:
+            sys.stdout = old_stdout
+            sys.stderr = old_stderr
             exit(e)

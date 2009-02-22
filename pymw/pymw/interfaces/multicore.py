@@ -45,7 +45,7 @@ class MulticoreInterface:
         self._python_loc = python_loc
         self._input_objs = {}
         self._output_objs = {}
-        self.pymw_interface_modules = "cPickle", "sys"
+        self.pymw_interface_modules = "cPickle", "sys", "cStringIO"
         for worker_num in range(num_workers):
             w = Worker()
             self._available_worker_list.put_nowait(item=w)
@@ -58,8 +58,9 @@ class MulticoreInterface:
         if sys.platform.startswith("win"): cf=0x08000000
         else: cf=0
         
-        # Pickle the input argument
+        # Pickle the input argument and remove it from the list
         input_obj_str = cPickle.dumps(self._input_objs[task._input_arg])
+        del self._input_objs[task._input_arg]
         
         try:
             worker._exec_process = subprocess.Popen(args=[self._python_loc, task._executable],
@@ -69,7 +70,7 @@ class MulticoreInterface:
             proc_stdout, proc_stderr = worker._exec_process.communicate(input_obj_str)
             retcode = worker._exec_process.returncode
             if retcode is 0:
-            	self._output_objs[task._output_arg] = cPickle.loads(proc_stdout)
+                self._output_objs[task._output_arg] = cPickle.loads(proc_stdout)
             	task_error = None
             else:
                 task_error = Exception("Executable failed with error "+str(retcode), proc_stderr)
@@ -106,8 +107,26 @@ class MulticoreInterface:
 
     def pymw_worker_func(func_name_to_call):
         try:
+            # Redirect stdout and stderr
+            old_stdout = sys.stdout
+            old_stderr = sys.stderr
+            sys.stdout = cStringIO.StringIO()
+            sys.stderr = cStringIO.StringIO()
+            # Get the input data
             input_data = pymw_worker_read(0)
             if not input_data: input_data = ()
-            pymw_worker_write(func_name_to_call(*input_data), 0)
+            # Execute the worker function
+            result = func_name_to_call(*input_data)
+            # Get any stdout/stderr printed during the worker execution
+            out_str = sys.stdout.getvalue()
+            err_str = sys.stderr.getvalue()
+            sys.stdout.close()
+            sys.stderr.close()
+            # Revert stdout/stderr to originals
+            sys.stdout = old_stdout
+            sys.stderr = old_stderr
+            pymw_worker_write([result, out_str, err_str], 0)
         except Exception, e:
+            sys.stdout = old_stdout
+            sys.stderr = old_stderr
             exit(e)
