@@ -1,4 +1,9 @@
 
+Changes in 0.2
+- Added support for computing in Condor grids.
+- Added more efficient communication for multicore interface.
+- Added support for calling Python functions instead of only scripts.
+
 Changes in 0.1
 - Initial release
 - Supports master-worker style parallel computing on multicore processors, MPI clusters and BOINC.
