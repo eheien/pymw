@@ -3,6 +3,7 @@ Changes in 0.2
 - Added support for computing in Condor grids.
 - Added more efficient communication for multicore interface.
 - Added support for calling Python functions instead of only scripts.
+- Improved error handling, standard I/O support.
 
 Changes in 0.1
 - Initial release
