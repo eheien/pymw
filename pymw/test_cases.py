@@ -21,7 +21,10 @@ class TestPyMW(unittest.TestCase):
     
     # Tests that getting the result of a non-submitted task returns an error
     def testGetResultNoSubmit(self):
+        task = self.pymw_master.submit_task(executable=null_worker, input_data=(1,))
         self.assertRaises(pymw.TaskException, self.pymw_master.get_result, 1234)
+        self.assertRaises(pymw.TaskException, self.pymw_master.get_result, [1, 2, 3, 4])
+        my_task, next_val = self.pymw_master.get_result()
     
     # Tests that getting a result with no submitted tasks returns an error
     def testGetAnyResultNoSubmit(self):
@@ -40,7 +43,7 @@ class TestPyMW(unittest.TestCase):
     def testBadPython(self):
         interface = pymw.interfaces.generic.GenericInterface(python_loc="/usr/local/dead_parrot/python")
         pymw_master = pymw.PyMW_Master(interface)
-        task = pymw_master.submit_task(executable=null_worker, input_data=1)
+        task = pymw_master.submit_task(executable=null_worker, input_data=(1,))
         self.assertRaises(Exception, pymw_master.get_result, task)
 
     # Tests that exceptions from the worker get passed back correctly
