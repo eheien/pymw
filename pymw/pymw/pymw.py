@@ -3,7 +3,7 @@
 """
 
 __author__ = "Eric Heien <e-heien@ist.osaka-u.ac.jp>"
-__date__ = "10 April 2008"
+__date__ = "31 March 2009"
 
 import threading
 import cPickle
@@ -25,33 +25,58 @@ import interfaces.boinc
 class PyMW_List:
     def __init__(self):
         self._lock = threading.Lock()
-        self._sem = threading.Semaphore(0)
+        self._add_event = threading.Condition(self._lock)
         self._data = []
     
     def append(self, item):
-        """Atomically appends an item to the list and increments the semaphore."""
-        self._lock.acquire()
+        """Atomically appends an item to the list and notifies listeners."""
+        self._add_event.acquire()
         self._data.append(item)
-        self._sem.release()
-        self._lock.release()
+        self._add_event.notifyAll()
+        self._add_event.release()
 
     def pop(self, blocking=False):
-        """Waits for an item to appear in the list, and pops it off."""
-        if not self._sem.acquire(blocking):
-            return None
-        self._lock.acquire()
-        try:
-            next_item = self._data.pop()
-        except:
-            next_item = None
-        self._lock.release()
-        return next_item
+        """Waits for any item to appear in the list, and pops it off."""
+        return self.pop_specific([], blocking)
 
+    def pop_specific(self, item_list=[], blocking=False):
+        """Waits for any item from item_list to appear, and pops it off.
+        An empty list indicates any item is acceptable."""
+        item_set = set(item_list)
+        self._add_event.acquire()
+        while True:
+            # Check if any of the current items are acceptable
+            # If we have a list of items, choose one from the list
+            found_item = None
+            if len(item_list) > 0:
+                data_set = set(self._data)
+                search = item_set & data_set
+                if len(search) > 0:
+                    found_item = list(search)[0]
+                    self._data.remove(found_item)
+            # Otherwise any item is acceptable
+            elif len(self._data) > 0:
+                found_item = self._data.pop()
+            
+            if found_item:
+                self._add_event.release()
+                return found_item
+            
+            # If we didn't find anything and we should block,
+            # wait for a notification from a new item being added
+            if blocking:
+                self._add_event.wait()
+            # If we didn't find anything and we should not block,
+            # return None
+            else:
+                self._add_event.release()
+                return None
+        
     def contains(self, item):
         """Checks if the list contains the specified item."""
-        self._lock.acquire()
+        self._add_event.acquire()
         n = self._data.count(item)
-        self._lock.release()
+        self._add_event.release()
         if n != 0: return True
         else: return False
 
@@ -229,7 +254,7 @@ class PyMW_Scheduler:
             except AttributeError:
                 worker = None
             # Wait until other tasks have been submitted and the thread count decreases,
-            # otherwise we might exhaust the file descriptors
+            # otherwise we might pass the process resource limitations
             while threading.activeCount() > 100: time.sleep(0.1)
             logging.info("Executing task "+str(next_task))
             task_thread = threading.Thread(target=self._task_executor,
@@ -240,7 +265,7 @@ class PyMW_Scheduler:
         logging.info("PyMW_Scheduler finished")
         self._running = False
     
-    # Use this wrapper to catch any interface exceptions,
+    # Use this wrapper function to catch any interface exceptions,
     # otherwise we get hanging threads
     def _task_executor(self, execute_task_func, next_task, worker):
         try:
@@ -287,7 +312,7 @@ class PyMW_Master:
         modules and PyMW calls to get the input data and return the
         output data."""
         
-        # If the interface doesn't provide methods for communicating with the workers, use default
+        # If the interface doesn't provide methods for communicating with the workers, use default functions
         all_funcs = (main_func,)+dep_funcs
         try:
             all_funcs += (self._interface.pymw_worker_read, self._interface.pymw_worker_write)
@@ -299,6 +324,7 @@ class PyMW_Master:
         except AttributeError:
             interface_modules = self.pymw_interface_modules
         
+        # Select the function to coordinate task execution on the worker
         try:
             all_funcs += (self._interface.pymw_worker_func,)
         except AttributeError:
@@ -430,22 +456,32 @@ class PyMW_Master:
     def get_result(self, task=None, blocking=True):
         """Gets the result of the executed task.
         If task is None, return the result of the next finished task.
+        If task is a list of tasks, return the result of any task in the list.
         If blocking is false and the task is not finished, returns None."""
-        if task and not self._submitted_tasks.count(task):
-            raise TaskException("Task has not been submitted")
         
         if len(self._submitted_tasks) <= 0:
             raise TaskException("No tasks have been submitted")
         
-        if task:
-            my_task = task
+        if not task:
+            task_list = []
+        elif type(task)==list:
+            task_list = task
         else:
-            my_task = self._finished_tasks.pop(blocking)
+            task_list = [task]
+        
+        # Check that the task(s) are of type PyMW_Task
+        for t in task_list:
+            if not isinstance(t, PyMW_Task):
+                raise TaskException("get_result accepts either a task, a list of tasks, or None")
+        
+        # Check that the task(s) have been submitted before
+        submit_intersect = set(self._submitted_tasks) & set(task_list)
+        if len(submit_intersect) != len(task_list):
+            raise TaskException("Task has not been submitted")
+        
+        my_task = self._finished_tasks.pop_specific(task_list, blocking)
         
         if not my_task:
-            return None, None
-        
-        if not my_task.is_task_finished(blocking):
             return None, None
 
         if my_task._error:
@@ -474,7 +510,10 @@ class PyMW_Master:
         
         for exec_file in self._function_source:
             if self._delete_files:
-                os.remove(self._function_source[exec_file][2])
+                try:
+                    os.remove(self._function_source[exec_file][2])
+                except OSError:
+                    pass
             pass
         
         try:
