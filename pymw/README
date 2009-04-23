@@ -1,4 +1,5 @@
 PyMW - Master Worker Computing in Python
+----------------------------------------
 PyMW is a Python module for parallel master-worker computing
 in a variety of environments. With the PyMW module, users can
 write a single program that scales from multicore machines to
