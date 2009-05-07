@@ -14,6 +14,14 @@ def err_worker():
 def print_worker():
     print "stdout test",
     print >> sys.stderr, "stderr test",
+    
+def square(list1):
+    for i in range(len(list1)):
+        list1[i] *= list1[i]
+    return list1
+
+def plus(list2):
+    return sum(list2)
 
 class TestPyMW(unittest.TestCase):
     def setUp(self):
@@ -100,6 +108,13 @@ class TestPyMW(unittest.TestCase):
             self.assert_(my_task.get_execution_time() >= 0)
             pymw_total += next_val
         self.assert_(pymw_total == actual_total)
+        
+        # MapReduce test
+        actual_total = 2870
+        pymw_mapreduce=pymw.PyMW_MapReduce(self.pymw_master)
+        task_MR = pymw_mapreduce.submit_task_mapreduce(square, plus, num_tasks, input_data=range(1,21), modules=(), dep_funcs=())
+        my_task, result = self.pymw_master.get_result(task_MR)
+        self.assert_(sum(result) == actual_total)
 
 if __name__ == '__main__':
         unittest.main()
