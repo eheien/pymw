@@ -34,6 +34,7 @@ class TestPyMW(unittest.TestCase):
     def testBadExecutable(self):
         bad_task = self.pymw_master.submit_task(executable='dead_parrot')
         self.assertRaises(Exception, self.pymw_master.get_result, bad_task)
+        self.assertRaises(Exception, self.pymw_master.submit_task, executable=2)
 
     # Tests that giving a bad executable type returns an error
     def testBadExecutableType(self):
