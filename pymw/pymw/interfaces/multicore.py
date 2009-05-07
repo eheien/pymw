@@ -13,6 +13,7 @@ import signal
 import errno
 import Queue
 import cPickle
+import cStringIO
 
 """On worker restarting:
 Multicore systems cannot handle worker restarts - recording PIDs
@@ -45,6 +46,7 @@ class MulticoreInterface:
         self._python_loc = python_loc
         self._input_objs = {}
         self._output_objs = {}
+        self._execute_time=[]
         self.pymw_interface_modules = "cPickle", "sys", "cStringIO"
         for worker_num in range(num_workers):
             w = Worker()
@@ -60,10 +62,9 @@ class MulticoreInterface:
         
         # Pickle the input argument and remove it from the list
         input_obj_str = cPickle.dumps(self._input_objs[task._input_arg])
-        del self._input_objs[task._input_arg]
-        
+
         try:
-            worker._exec_process = subprocess.Popen(args=[self._python_loc, task._executable],
+            worker._exec_process = subprocess.Popen(args=[self._python_loc, task._executable, task._input_arg, task._output_arg],
                                                     creationflags=cf, stdin=subprocess.PIPE,
                                                     stdout=subprocess.PIPE, stderr=subprocess.PIPE)
             # Wait for the process to finish
@@ -71,6 +72,8 @@ class MulticoreInterface:
             retcode = worker._exec_process.returncode
             if retcode is 0:
                 self._output_objs[task._output_arg] = cPickle.loads(proc_stdout)
+                if task._file_input==True:
+                    self._output_objs[task._output_arg][0]=[task._output_arg]
             	task_error = None
             else:
                 task_error = Exception("Executable failed with error "+str(retcode), proc_stderr)
@@ -102,10 +105,14 @@ class MulticoreInterface:
     def pymw_worker_read(loc):
         return cPickle.Unpickler(sys.stdin).load()
     
-    def pymw_worker_write(output, loc):
+    def pymw_worker_write(output, loc, file_input):
+        if file_input==True:
+            outfile = open(loc, 'w')
+            cPickle.Pickler(outfile).dump(output[0])
+            outfile.close()
         print cPickle.dumps(output)
 
-    def pymw_worker_func(func_name_to_call):
+    def pymw_worker_func(func_name_to_call, file_input=False): #_0
         try:
             # Redirect stdout and stderr
             old_stdout = sys.stdout
@@ -116,7 +123,22 @@ class MulticoreInterface:
             input_data = pymw_worker_read(0)
             if not input_data: input_data = ()
             # Execute the worker function
-            result = func_name_to_call(*input_data)
+            if file_input==True:
+                try:
+                    f=open(input_data[0][0],"r")
+                    filedata=cPickle.loads(f.read())
+                except:
+                    filedata=[]
+                    for i in input_data[0]:
+                        num=0
+                        for j in xrange(len(i)/3):
+                            f=open(i[num+0],"r")
+                            f.seek(i[num+1])
+                            filedata.append(f.read(i[num+2]-i[num+1]))
+                            num+=3
+                result = func_name_to_call(filedata)
+            else:
+                result = func_name_to_call(*input_data)
             # Get any stdout/stderr printed during the worker execution
             out_str = sys.stdout.getvalue()
             err_str = sys.stderr.getvalue()
@@ -125,7 +147,7 @@ class MulticoreInterface:
             # Revert stdout/stderr to originals
             sys.stdout = old_stdout
             sys.stderr = old_stderr
-            pymw_worker_write([result, out_str, err_str], 0)
+            pymw_worker_write([result, out_str, err_str], sys.argv[2], file_input)
         except Exception, e:
             sys.stdout = old_stdout
             sys.stderr = old_stderr
