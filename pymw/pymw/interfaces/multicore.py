@@ -115,10 +115,8 @@ class MulticoreInterface:
     def pymw_worker_func(func_name_to_call, file_input=False): #_0
         try:
             # Redirect stdout and stderr
-            old_stdout = sys.stdout
-            old_stderr = sys.stderr
-            sys.stdout = cStringIO.StringIO()
-            sys.stderr = cStringIO.StringIO()
+            old_stdout, old_stderr = sys.stdout, sys.stderr
+            sys.stdout, sys.stderr = cStringIO.StringIO(), cStringIO.StringIO()
             # Get the input data
             input_data = pymw_worker_read(0)
             if not input_data: input_data = ()
@@ -140,13 +138,11 @@ class MulticoreInterface:
             else:
                 result = func_name_to_call(*input_data)
             # Get any stdout/stderr printed during the worker execution
-            out_str = sys.stdout.getvalue()
-            err_str = sys.stderr.getvalue()
+            out_str, err_str = sys.stdout.getvalue(), sys.stderr.getvalue()
             sys.stdout.close()
             sys.stderr.close()
             # Revert stdout/stderr to originals
-            sys.stdout = old_stdout
-            sys.stderr = old_stderr
+            sys.stdout, sys.stderr = old_stdout, old_stderr
             pymw_worker_write([result, out_str, err_str], sys.argv[2], file_input)
         except Exception, e:
             sys.stdout = old_stdout
