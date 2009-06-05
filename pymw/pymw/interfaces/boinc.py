@@ -60,20 +60,20 @@ OUTPUT_TEMPLATE = """\
 
 lock = threading.Lock()
 
-class _ResultHandler(threading.Thread):
-    def __init__(self, task, cwd, sleeptime = 10):
-        threading.Thread.__init__(self)
-        self._task = task
-        self._sleeptime = sleeptime
-        self._cwd = cwd
-
-    def run(self):
-        while 1:
-            if os.path.isfile(os.path.join(self._cwd, self._task._output_arg)):
-                self._task.task_finished()
-                break
-            #logging.debug("Waiting for result, sleeping for " + str(self._sleeptime) + " seconds...")
-            time.sleep(self._sleeptime)
+#class _ResultHandler(threading.Thread):
+#    def __init__(self, task, cwd, sleeptime = 10):
+#        threading.Thread.__init__(self)
+#        self._task = task
+#        self._sleeptime = sleeptime
+#        self._cwd = cwd
+#
+#    def run(self):
+#        while 1:
+#            if os.path.isfile(os.path.join(self._cwd, self._task._output_arg)):
+#                self._task.task_finished()
+#                break
+#            #logging.debug("Waiting for result, sleeping for " + str(self._sleeptime) + " seconds...")
+#            time.sleep(self._sleeptime)
 
 class BOINCInterface:
     def __init__(self, project_home):
@@ -83,6 +83,60 @@ class BOINCInterface:
         self._boinc_in_template = INPUT_TEMPLATE
         self._boinc_out_template = OUTPUT_TEMPLATE
         self._cwd = os.getcwd()
+        
+        # task reclamation support
+        self._task_list = []
+        self._task_list_lock = threading.Lock()
+        self._result_checker_running = False
+        self._task_finish_thread = None
+
+    def _get_finished_tasks(self):
+        """Task reclamation thread.
+        
+        When tasks are completed by BOINC, the assimilator will
+        drop files back into the output directory for PyMW to reclaim,
+        This thread finds those files and marks the respective task
+        as completed.        
+        """
+        
+        while True:
+            self._task_list_lock.acquire()
+            try:
+                for entry in self._task_list:
+                    task,out_file = entry
+                    # Check for the output file
+                    if os.path.isfile(out_file):
+                        task.task_finished()
+                        self._task_list.remove(entry)
+        
+                if len(self._task_list) == 0:
+                    self._result_checker_running = False
+                    return
+            except Exception,data:
+                logging.critical("_get_finished_tasks crashed: %s" % data)
+                self._result_checker_running = False
+                raise
+            finally:
+                self._task_list_lock.release()
+            
+            time.sleep(0.2)
+    
+    def _queue_task(self, task, output_file):
+        """Thread-safe addition of a task,output tuple to the task list.
+        
+        Appends a task,output tuple to the task list and then
+        attempts to start the result checker thread if not already running.
+        """
+        
+        self._task_list_lock.acquire()
+        try: self._task_list.append((task,output_file))
+        finally: self._task_list_lock.release()
+        
+        if not self._result_checker_running:
+            self._result_checker_running = True
+            self._task_finish_thread = threading.Thread(target=self._get_finished_tasks)
+            self._task_finish_thread.start()
+
     
     def reserve_worker(self):
         return None
@@ -103,83 +157,87 @@ class BOINCInterface:
 
         # Block concurrent threads until changing directories
         lock.acquire()
-        logging.debug("Locking thread")
-        logging.debug("input: %s, output: %s, task: %s" % (in_file, out_file, task_exe,))
-
-        cmd = "cd " + self._project_home + ";./bin/dir_hier_path " + in_file
         try:
-            with os.popen(cmd, "r") as p:
-                in_dest = p.read().strip()
-        except Exception,error_args:
-            logging.critical("error reading in_dest: %s" % error_args )
-            raise
-        
-        #logging.debug("found in_dest: %s" % in_dest)
-        in_dest_dir = in_dest.rpartition('/')[0]
-        cmd = "cd " + self._project_home + ";./bin/dir_hier_path " + task_exe
-
-        with os.popen(cmd, "r") as p:
-            exe_dest = p.read().strip()
-        exe_dest_dir = exe_dest.rpartition('/')[0]
+            logging.debug("Locking thread")
+            logging.debug("input: %s, output: %s, task: %s" % (in_file, out_file, task_exe,))
     
-        # Copy input files to download dir
-        if not os.path.isfile(exe_dest):
+            cmd = "cd " + self._project_home + ";./bin/dir_hier_path " + in_file
+            try:
+                with os.popen(cmd, "r") as p:
+                    in_dest = p.read().strip()
+            except Exception,error_args:
+                logging.critical("error reading in_dest: %s" % error_args )
+                raise
+            
+            #logging.debug("found in_dest: %s" % in_dest)
+            in_dest_dir = in_dest.rpartition('/')[0]
+            cmd = "cd " + self._project_home + ";./bin/dir_hier_path " + task_exe
+    
+            with os.popen(cmd, "r") as p:
+                exe_dest = p.read().strip()
+            exe_dest_dir = exe_dest.rpartition('/')[0]
+        
+            # Copy input files to download dir
+            if not os.path.isfile(exe_dest):
+                while(1):
+                    logging.debug("Waiting for task exe to become ready")
+                    if os.path.isfile(task._executable):
+                        break
+                shutil.copyfile(task._executable, exe_dest)
             while(1):
-                logging.debug("Waiting for task exe to become ready")
-                if os.path.isfile(task._executable):
+                logging.debug("Waiting for input to become ready...")
+                if os.path.isfile(task._input_arg):
                     break
-            shutil.copyfile(task._executable, exe_dest)
-        while(1):
-            logging.debug("Waiting for input to become ready...")
-            if os.path.isfile(task._input_arg):
-                break
+                
+            shutil.copyfile(task._input_arg, in_dest)
+                
+            # Create input XML template
+            in_template = "pymw_in_" + str(task._task_name) + ".xml"
+            dest = self._project_templates + in_template
+            boinc_in_template = self._boinc_in_template
+            boinc_in_template = boinc_in_template.replace("<PYMW_EXECUTABLE/>", task_exe)
+            boinc_in_template = boinc_in_template.replace("<PYMW_INPUT/>", in_file)
+            boinc_in_template = boinc_in_template.replace("<PYMW_CMDLINE/>", task_exe + " " + in_file + " " + out_file)
+            logging.debug("writing in xml template: %s" % dest)
             
-        shutil.copyfile(task._input_arg, in_dest)
+            with open(dest, "w") as f:
+                f.writelines(boinc_in_template)
             
-        # Create input XML template
-        in_template = "pymw_in_" + str(task._task_name) + ".xml"
-        dest = self._project_templates + in_template
-        boinc_in_template = self._boinc_in_template
-        boinc_in_template = boinc_in_template.replace("<PYMW_EXECUTABLE/>", task_exe)
-        boinc_in_template = boinc_in_template.replace("<PYMW_INPUT/>", in_file)
-        boinc_in_template = boinc_in_template.replace("<PYMW_CMDLINE/>", task_exe + " " + in_file + " " + out_file)
-        logging.debug("writing in xml template: %s" % dest)
+            # Create output XML template
+            out_template = "pymw_out_" + str(task._task_name) + ".xml"
+            dest = self._project_templates + out_template
+            boinc_out_template = self._boinc_out_template
+            boinc_out_template = boinc_out_template.replace("<PYMW_OUTPUT/>", out_file)
+            logging.debug("writing out xml template: %s" % dest)
+            
+            with open(dest, "w") as f:
+                f.writelines(boinc_out_template)
+            
+            # Call create_work
+            cmd =  "cd " + self._project_home + "; ./bin/create_work -appname pymw -wu_name pymw_" +  str(task._task_name)
+            cmd += " -wu_template templates/" +  in_template
+            cmd += " -result_template templates/" + out_template 
+            cmd +=  " " + task_exe + " "  + in_file
+            os.system(cmd)
+        finally:
+            # Release lock        
+            lock.release()
+            logging.debug("Releasing thread lock")
         
-        with open(dest, "w") as f:
-            f.writelines(boinc_in_template)
+        # Add the task to the current task reclamation queue
+        self._queue_task(task, task._output_arg)
         
-        # Create output XML template
-        out_template = "pymw_out_" + str(task._task_name) + ".xml"
-        dest = self._project_templates + out_template
-        boinc_out_template = self._boinc_out_template
-        boinc_out_template = boinc_out_template.replace("<PYMW_OUTPUT/>", out_file)
-        logging.debug("writing out xml template: %s" % dest)
-        
-        with open(dest, "w") as f:
-            f.writelines(boinc_out_template)
-        
-        # Call create_work
-        cmd =  "cd " + self._project_home + "; ./bin/create_work -appname pymw -wu_name pymw_" +  str(task._task_name)
-        cmd += " -wu_template templates/" +  in_template
-        cmd += " -result_template templates/" + out_template 
-        cmd +=  " " + task_exe + " "  + in_file
-        
-        #os.chdir(self._project_home)
-        os.system(cmd)
-        #os.chdir(self._cwd)
-        #logging.debug("CWD returned to " + self._cwd)
-        
-        # Release lock        
-        lock.release()
-        logging.debug("Releasing thread lock")
-        
-        # Wait for the results
-        tasks = []
-        result = _ResultHandler(task, self._cwd, 10)
-        tasks.append(result)
-        result.start()        
-        for result in tasks:
-            result.join()
+        # TODO: remove old stuff below
+        #tasks = []
+        #result = _ResultHandler(task, self._cwd, 10)
+        #tasks.append(result)
+        #result.start()        
+        #for result in tasks:
+        #    result.join()
         
     def _cleanup(self):
-            return None
+        if self._result_checker_running:
+            self._task_list_lock.acquire()
+            try: self._task_list = []
+            finally: self._task_list_lock.release()
+
