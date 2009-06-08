@@ -2,14 +2,14 @@
 """Provide a BOINC interface for master worker computing with PyMW.
 """
 
-from __future__ import with_statement
-
 import pymw
 import threading
 import shutil
 import os
+import sys
 import re
 import time
+import calendar
 import logging
 
 
@@ -83,12 +83,16 @@ class BOINCInterface:
         self._boinc_in_template = INPUT_TEMPLATE
         self._boinc_out_template = OUTPUT_TEMPLATE
         self._cwd = os.getcwd()
+        self._batch_id = str(self._get_unix_timestamp())
         
         # task reclamation support
         self._task_list = []
         self._task_list_lock = threading.Lock()
         self._result_checker_running = False
         self._task_finish_thread = None
+
+    def _get_unix_timestamp(self):
+        return calendar.timegm(time.gmtime())
 
     def _get_finished_tasks(self):
         """Task reclamation thread.
@@ -102,20 +106,21 @@ class BOINCInterface:
         while True:
             self._task_list_lock.acquire()
             try:
-                for entry in self._task_list:
-                    task,out_file = entry
-                    # Check for the output file
-                    if os.path.isfile(out_file):
-                        task.task_finished()
-                        self._task_list.remove(entry)
-        
-                if len(self._task_list) == 0:
+                try:
+                    for entry in self._task_list:
+                        task,out_file = entry
+                        # Check for the output file
+                        if os.path.isfile(out_file):
+                            task.task_finished()
+                            self._task_list.remove(entry)
+            
+                    if len(self._task_list) == 0:
+                        self._result_checker_running = False
+                        return
+                except Exception,data:
+                    logging.critical("_get_finished_tasks crashed: %s" % data)
                     self._result_checker_running = False
-                    return
-            except Exception,data:
-                logging.critical("_get_finished_tasks crashed: %s" % data)
-                self._result_checker_running = False
-                raise
+                    raise
             finally:
                 self._task_list_lock.release()
             
@@ -141,11 +146,14 @@ class BOINCInterface:
     def reserve_worker(self):
         return None
     
+    def _project_path_exists(self):
+        return self._project_home != '' and os.path.exists(self._project_home)
+    
     def execute_task(self, task, worker):
         global lock
         
         # Check if project_home dir is known
-        if self._project_home == '':
+        if not self._project_path_exists():
             logging.critical("Missing BOINC project home directory")
             task_error = Exception("Missing BOINC project home directory (-p switch)")
             task.task_finished(task_error)
@@ -163,8 +171,9 @@ class BOINCInterface:
     
             cmd = "cd " + self._project_home + ";./bin/dir_hier_path " + in_file
             try:
-                with os.popen(cmd, "r") as p:
-                    in_dest = p.read().strip()
+                p = os.popen(cmd, "r")
+                try: in_dest = p.read().strip()
+                finally: p.close()
             except Exception,error_args:
                 logging.critical("error reading in_dest: %s" % error_args )
                 raise
@@ -173,8 +182,10 @@ class BOINCInterface:
             in_dest_dir = in_dest.rpartition('/')[0]
             cmd = "cd " + self._project_home + ";./bin/dir_hier_path " + task_exe
     
-            with os.popen(cmd, "r") as p:
-                exe_dest = p.read().strip()
+            p = os.popen(cmd, "r")
+            try: exe_dest = p.read().strip()
+            finally: p.close()
+            
             exe_dest_dir = exe_dest.rpartition('/')[0]
         
             # Copy input files to download dir
@@ -200,8 +211,9 @@ class BOINCInterface:
             boinc_in_template = boinc_in_template.replace("<PYMW_CMDLINE/>", task_exe + " " + in_file + " " + out_file)
             logging.debug("writing in xml template: %s" % dest)
             
-            with open(dest, "w") as f:
-                f.writelines(boinc_in_template)
+            f = open(dest, "w")
+            try: f.writelines(boinc_in_template)
+            finally: f.close()
             
             # Create output XML template
             out_template = "pymw_out_" + str(task._task_name) + ".xml"
@@ -210,14 +222,17 @@ class BOINCInterface:
             boinc_out_template = boinc_out_template.replace("<PYMW_OUTPUT/>", out_file)
             logging.debug("writing out xml template: %s" % dest)
             
-            with open(dest, "w") as f:
-                f.writelines(boinc_out_template)
+            f = open(dest, "w")
+            try: f.writelines(boinc_out_template)
+            finally: f.close()
             
             # Call create_work
-            cmd =  "cd " + self._project_home + "; ./bin/create_work -appname pymw -wu_name pymw_" +  str(task._task_name)
+            cmd =  "cd " + self._project_home 
+            cmd += "; ./bin/create_work -appname pymw -wu_name pymw_" +  str(task._task_name) + "_b" + self._batch_id
             cmd += " -wu_template templates/" +  in_template
-            cmd += " -result_template templates/" + out_template 
-            cmd +=  " " + task_exe + " "  + in_file
+            cmd += " -result_template templates/" + out_template
+            cmd += " -batch " + self._batch_id 
+            cmd += " " + task_exe + " "  + in_file
             os.system(cmd)
         finally:
             # Release lock        
@@ -240,4 +255,34 @@ class BOINCInterface:
             self._task_list_lock.acquire()
             try: self._task_list = []
             finally: self._task_list_lock.release()
+        
+        # now release the batch so it can be deleted
+        if not self._project_path_exists():
+            logging.critical("Missing BOINC project home directory")
+            logging.critical("Unable to cleanup batch: " + self._batch_id)
+            return None
 
+        # setup access to the BOINC database support
+        bin_path = os.path.join(self._project_home, "bin")
+        if not bin_path in sys.path:
+            sys.path.append(bin_path)
+
+        # BOINC will search for config files using these vars
+        os.environ['BOINC_CONFIG_XML'] = os.path.join(self._project_home, 'config.xml')
+        os.environ['BOINC_PROJECT_XML'] = os.path.join(self._project_home, 'project.xml')
+        os.environ['BOINC_RUN_STATE_XML'] = os.path.join(self._project_home, 'run_state.xml')
+        
+        # load the BOINC database module
+        import database
+        
+        # query the database for the batch and zero out every WU
+        database.connect()
+        logging.debug("Zeroing batch in BOINC db where batch = " + self._batch_id)
+
+        try:
+            units = database.Workunits.find(batch=self._batch_id)
+            for wu in units:
+                wu.batch = 0
+                wu.commit()
+        finally:
+            database.close()
