@@ -107,7 +107,7 @@ else:
     open(os.path.join(linux_dir, i686_pc_linux_gnu + ".file_ref_info"), "w").writelines(FILE_REF)
     open(os.path.join(linux_dir, "pymw_app.py"), "w").writelines(PYMW_APP)
     open(os.path.join(linux_dir, "pymw_app.py.file_ref_info"), "w").writelines(FILE_REF)
-    os.chmod(linux_exe, stat.S_IRWXU)
+    os.chmod(linux_exe, stat.S_IRWXU | stat.S_IRGRP | stat.S_IROTH)
     logging.info("client application for Linux platform set up successfully")
     
     # windows_intelx86
@@ -119,7 +119,7 @@ else:
     open(os.path.join(win_dir, windows_intelx86 + ".file_ref_info"), "w").writelines(FILE_REF)
     open(os.path.join(win_dir, "pymw_app.py"), "w").writelines(PYMW_APP)
     open(os.path.join(win_dir, "pymw_app.py.file_ref_info"), "w").writelines(FILE_REF)
-    os.chmod(win_exe, stat.S_IRWXU)
+    os.chmod(win_exe, stat.S_IRWXU | stat.S_IRGRP | stat.S_IROTH)
     logging.info("client application for Windows platform set up successfully")
 
     # i686-apple-darwin
@@ -131,7 +131,7 @@ else:
     open(os.path.join(apple_dir, i686_apple_darwin + ".file_ref_info"), "w").writelines(FILE_REF)
     open(os.path.join(apple_dir, "pymw_app.py"), "w").writelines(PYMW_APP)
     open(os.path.join(apple_dir, "pymw_app.py.file_ref_info"), "w").writelines(FILE_REF)
-    os.chmod(apple_exe, stat.S_IRWXU)
+    os.chmod(apple_exe, stat.S_IRWXU | stat.S_IRGRP | stat.S_IROTH)
     logging.info("client application for Apple platform set up successfully")
     
     # Call update_versions
