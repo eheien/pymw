@@ -66,9 +66,6 @@ class MPIInterface:
         task_finish_thread = threading.Thread(target=self._get_finished_tasks)
         task_finish_thread.start()
     
-    def reserve_worker(self):
-        return None
-    
     def _get_finished_tasks(self):
         try:
             while True:

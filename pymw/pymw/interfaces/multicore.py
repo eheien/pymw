@@ -11,6 +11,7 @@ import ctypes
 import os
 import signal
 import errno
+import threading
 import Queue
 import cPickle
 import cStringIO
@@ -41,7 +42,7 @@ class MulticoreInterface:
 
     def __init__(self, num_workers=1, python_loc="python"):
         self._num_workers = num_workers
-        self._available_worker_list = Queue.Queue(0)
+        self._available_worker_list = []
         self._worker_list = []
         self._python_loc = python_loc
         self._input_objs = {}
@@ -50,12 +51,15 @@ class MulticoreInterface:
         self.pymw_interface_modules = "cPickle", "sys", "cStringIO"
         for worker_num in range(num_workers):
             w = Worker()
-            self._available_worker_list.put_nowait(item=w)
+            self._available_worker_list.append(w)
             self._worker_list.append(w)
     
-    def reserve_worker(self):
-        return self._available_worker_list.get(block=True)
+    def get_available_workers(self):
+        return list(self._available_worker_list)
     
+    def reserve_worker(self, worker):
+        self._available_worker_list.remove(worker)
+        
     def execute_task(self, task, worker):
         if sys.platform.startswith("win"): cf=0x08000000
         else: cf=0
@@ -86,7 +90,7 @@ class MulticoreInterface:
         
         worker._exec_process = None
         task.task_finished(task_error)    # notify the task
-        self._available_worker_list.put_nowait(item=worker)    # rejoin the list of available workers
+        self._available_worker_list.append(item=worker)    # rejoin the list of available workers
 
     def _cleanup(self):
         for worker in self._worker_list:

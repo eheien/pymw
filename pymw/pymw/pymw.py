@@ -21,6 +21,7 @@ import interfaces.multicore
 import interfaces.mpi
 import interfaces.condor
 import interfaces.boinc
+import interfaces.grid_simulator
 
 class PyMW_List:
     def __init__(self):
@@ -28,6 +29,12 @@ class PyMW_List:
         self._add_event = threading.Condition(self._lock)
         self._data = []
     
+    def get_data(self):
+    	self._lock.acquire()
+    	copy_list = list(self._data)
+    	self._lock.release()
+    	return copy_list
+    	
     def append(self, item):
         """Atomically appends an item to the list and notifies listeners."""
         self._add_event.acquire()
@@ -79,6 +86,9 @@ class PyMW_List:
         self._add_event.release()
         if n != 0: return True
         else: return False
+    
+    def size(self):
+        return len(self._data)
 
 class TaskException(Exception):
     """Represents an exception caused by a task failure."""
@@ -227,22 +237,54 @@ class PyMW_Scheduler:
             _scheduler_thread = threading.Thread(target=self._scheduler)
             _scheduler_thread.start()
     
+    def _task_matcher(self, task_list, worker_list):
+        return task_list[0], worker_list[0]
+    
     def _scheduler(self):
         """Waits for submissions to the task list, then submits them to the interface."""
-        next_task = self._task_queue.pop(blocking=False)
-        while next_task:
+        # While there are tasks in the queue, assign them to workers
+        # NOTE: assumes that only the scheduler thread will remove tasks from the list
+        # and only the scheduler thread will call reserve_worker
+        while self._task_queue.size() > 0:
+            # Get a list of workers available on this interface
+            # get_available_workers should block until one or more workers are available
             try:
-                worker = self._interface.reserve_worker()
+                worker_list = self._interface.get_available_workers()
+                if not type(worker_list)==list: worker_list = [None]
             except AttributeError:
-                worker = None
+                worker_list = [None]
+            
+            # Match a worker from the list with a task
+            # If we couldn't find the task/worker in the list, the task matcher returned an invalid value
+            task_list = self._task_queue.get_data()
+            logging.info("Matching task with a worker")
+            try:
+                matched_task, matched_worker = self._task_matcher(task_list, worker_list)
+            except:
+                matched_worker = worker_list[0]
+                matched_task = task_list[0]
+            if worker_list.count(matched_worker) == 0: matched_worker = worker_list[0]
+            
+            # Remove the task from the queue
+            popped_task = self._task_queue.pop_specific(item_list=[matched_task])
+            if not popped_task: matched_task = task_list[0]
+            
+            # Reserve the worker with the interface
+            try:
+                self._interface.reserve_worker(matched_worker)
+            except:
+                pass
+            
             # Wait until other tasks have been submitted and the thread count decreases,
             # otherwise we might pass the process resource limitations
-            while threading.activeCount() > 100: time.sleep(0.1)
-            logging.info("Executing task "+str(next_task))
+            while threading.activeCount() > 100:
+                time.sleep(0.1)
+            
+            # Execute the task on the interface with the given worker
+            logging.info("Executing task "+str(matched_task))
             task_thread = threading.Thread(target=self._task_executor,
-                                           args=(self._interface.execute_task, next_task, worker))
+                                           args=(self._interface.execute_task, matched_task, matched_worker))
             task_thread.start()
-            next_task = self._task_queue.pop(blocking=False)
         
         logging.info("PyMW_Scheduler finished")
         self._running = False

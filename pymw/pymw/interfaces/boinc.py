@@ -142,10 +142,6 @@ class BOINCInterface:
             self._task_finish_thread = threading.Thread(target=self._get_finished_tasks)
             self._task_finish_thread.start()
 
-    
-    def reserve_worker(self):
-        return None
-    
     def _project_path_exists(self):
         return self._project_home != '' and os.path.exists(self._project_home)
     

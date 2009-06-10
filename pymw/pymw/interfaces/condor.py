@@ -76,9 +76,6 @@ class CondorInterface:
                 self._result_checker_running = False
                 return
             time.sleep(0.2)
-        
-    def reserve_worker(self):
-        return None
     
     def execute_task(self, task, worker):
         # Create a template for this task
