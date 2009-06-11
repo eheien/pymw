@@ -11,8 +11,6 @@ import ctypes
 import os
 import signal
 import errno
-import threading
-import Queue
 import cPickle
 import cStringIO
 
@@ -47,24 +45,21 @@ class MulticoreInterface:
         self._python_loc = python_loc
         self._input_objs = {}
         self._output_objs = {}
-        self._execute_time=[]
         self.pymw_interface_modules = "cPickle", "sys", "cStringIO"
-        self._worker_lock = threading.Condition()
         for worker_num in range(num_workers):
             w = Worker()
             self._available_worker_list.append(w)
             self._worker_list.append(w)
     
     def get_available_workers(self):
-    	self._worker_lock.acquire()
-        while len(self._available_worker_list) == 0:
-            self._worker_lock.wait()
-        self._worker_lock.acquire()
         return list(self._available_worker_list)
     
     def reserve_worker(self, worker):
         self._available_worker_list.remove(worker)
-        
+    
+    def worker_finished(self, worker):
+        self._available_worker_list.append(worker)
+    
     def execute_task(self, task, worker):
         if sys.platform.startswith("win"): cf=0x08000000
         else: cf=0
@@ -95,7 +90,6 @@ class MulticoreInterface:
         
         worker._exec_process = None
         task.task_finished(task_error)    # notify the task
-        self._available_worker_list.append(item=worker)    # rejoin the list of available workers
 
     def _cleanup(self):
         for worker in self._worker_list:
@@ -103,7 +97,7 @@ class MulticoreInterface:
     
     def get_status(self):
         return {"num_total_workers" : self._num_workers,
-            "num_active_workers": self._num_workers-len(self._worker_list)}
+            "num_active_workers": self._num_workers-len(self._available_worker_list)}
     
     def pymw_master_read(self, loc):
         return self._output_objs[loc]
@@ -130,7 +124,7 @@ class MulticoreInterface:
             input_data = pymw_worker_read(0)
             if not input_data: input_data = ()
             # Execute the worker function
-            if file_input==True:
+            if file_input:
                 try:
                     f=open(input_data[0][0],"r")
                     filedata=cPickle.loads(f.read())

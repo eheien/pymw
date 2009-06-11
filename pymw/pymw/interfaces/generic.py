@@ -8,29 +8,29 @@ __date__ = "22 February 2009"
 import subprocess
 import sys
 import errno
-import time
-import threading
 
 class GenericInterface:
 	"""Provides a simple generic interface for single machine systems.
 	This can take advantage of multicore machines by starting multiple processes."""
 
 	def __init__(self, num_workers=1, python_loc="python"):
+		"""Interface initialization should start any necessary programs, 
+		and create an initial list of workers if appropriate."""
 		self._num_workers = num_workers
 		self._available_worker_list = [worker_num for worker_num in range(num_workers)]
-		self._worker_lock = threading.Condition()
 		self._python_loc = python_loc
 	
-	# Wait for a worker to become available
 	def get_available_workers(self):
-		self._worker_lock.acquire()
-		while len(self._available_worker_list) == 0:
-			self._worker_lock.wait()
-		self._worker_lock.release()
+		"""Return a list of available workers, or [] if there are no available workers."""
 		return list(self._available_worker_list)
 	
 	def reserve_worker(self, worker):
+		"""Reserve a given worker such that it will not be returned by get_available_workers."""
 		self._available_worker_list.remove(worker)
+	
+	def worker_finished(self, worker):
+		"""Return a given worker to the pool such that it will be returned by get_available_workers."""
+		self._available_worker_list.append(worker)
 	
 	def execute_task(self, task, worker):
 		try:
@@ -51,12 +51,6 @@ class GenericInterface:
 		
 		# Notify the task of completion
 		task.task_finished(task_error)
-		
-		# Put the worker back on the list
-		self._worker_lock.acquire()
-		self._available_worker_list.append(worker)
-		self._worker_lock.notify()
-		self._worker_lock.release()
 
 	def get_status(self):
 		return {"num_total_workers" : self._num_workers,

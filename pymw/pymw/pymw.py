@@ -186,6 +186,10 @@ class PyMW_Task:
         self._times["finish_time"] = time.time()
         self._finish_event.set()
         self._finished_queue.append(self)
+        try:
+            self._worker_finish_func(self._assigned_worker)
+        except:
+            pass
 
     def is_task_finished(self, wait):
         """Checks if the task is finished, and optionally waits for it to finish."""
@@ -224,10 +228,13 @@ class PyMW_Task:
 class PyMW_Scheduler:
     """Takes tasks submitted by user and sends them to the master-worker interface.
     This is done in a separate thread to allow for asynchronous program execution."""
-    def __init__(self, task_queue, interface):
+    def __init__(self, task_queue, interface, task_match_func=None):
         self._task_queue = task_queue
         self._interface = interface
         self._running = False
+        self._interface_worker_lock = threading.Condition()
+        if task_match_func: self._task_matcher = task_match_func
+        else: self._task_matcher = self._default_task_match_func
     
     def _start_scheduler(self):
         if not self._running:
@@ -236,44 +243,101 @@ class PyMW_Scheduler:
             _scheduler_thread = threading.Thread(target=self._scheduler)
             _scheduler_thread.start()
     
-    def _task_matcher(self, task_list, worker_list):
+    def _default_task_match_func(self, task_list, worker_list):
         return task_list[0], worker_list[0]
     
+    def _worker_finished(self, worker):
+        self._interface_worker_lock.acquire()
+        try:
+            self._interface.worker_finished(worker)
+        except:
+            pass
+        self._interface_worker_lock.notify()
+        self._interface_worker_lock.release()
+    
+    # Returns true if the scheduler should continue running
+    def _should_scheduler_run(self):
+        return (self._task_queue.size() > 0)
+    
+    # Get a list of workers available on this interface
+    def _get_worker_list(self):
+        try:
+            worker_list = self._interface.get_available_workers()
+            if not type(worker_list)==list: worker_list = [None]
+        except:
+            worker_list = [None]
+        return worker_list
+    
+    # Match a worker from the list with a task
+    # If we couldn't find the task/worker in the list, the task matcher returned an invalid value
+    def _match_worker_and_task(self, task_list, worker_list):
+        try:
+            matched_task, matched_worker = self._task_matcher(task_list, worker_list)
+        except:
+            matched_worker = worker_list[0]
+            matched_task = task_list[0]
+        if worker_list.count(matched_worker) == 0: matched_worker = worker_list[0]
+        
+        return matched_task, matched_worker
+    
+    # Reserve the worker with the interface and remove the task from the queue
+    def _reserve_task_worker(self, matched_task, matched_worker):
+        # Remove the task from the queue
+        popped_task = self._task_queue.pop_specific(item_list=[matched_task])
+        if not popped_task: matched_task = task_list[0]
+        
+        # Reserve the worker with the interface
+        matched_task._assigned_worker = matched_worker
+        matched_task._worker_finish_func = self._worker_finished
+        try:
+            self._interface.reserve_worker(matched_worker)
+        except:
+            pass
+    
+    # Waits for a task to finish and free up a worker, or 1 second (whichever is first)
+    def _wait_for_worker(self):
+        self._interface_worker_lock.acquire()
+        self._interface_worker_lock.wait(timeout=1.0)
+        self._interface_worker_lock.release()
+    
+    # Scheduler logic:
+    # While there are tasks on the queue
+    #    - Get a list of available workers
+    #    - If no worker is available
+    #        ~ try again after a _worker_finished signal or 1 second (whichever is first)
+    #    - else (> 0 workers are available)
+    #        ~ call the task matching function with the list of tasks and list of workers
+    #    - If the task matcher doesn't fit any worker with a task
+    #        ~ try again after a _worker_finished signal or 1 second (whichever is first)
+    #    - else (the task matcher gives a match)
+    #        ~ Remove the task from the list of tasks
+    #        ~ Reserve the worker with the interface
+    #        ~ Execute the task on the interface with the given worker
+    #        ~ When task_finished is called, replace the worker in the interface with _worker_finished
     def _scheduler(self):
         """Waits for submissions to the task list, then submits them to the interface."""
         # While there are tasks in the queue, assign them to workers
         # NOTE: assumes that only the scheduler thread will remove tasks from the list
         # only the scheduler thread will call reserve_worker, and there is only one scheduler thread
-        while self._task_queue.size() > 0:
-            # Get a list of workers available on this interface
-            # get_available_workers should block until one or more workers are available
-            try:
-                worker_list = self._interface.get_available_workers()
-                if not type(worker_list)==list or len(worker_list) == 0:
-                	worker_list = [None]
-            except:
-                worker_list = [None]
-            
-            # Match a worker from the list with a task
-            # If we couldn't find the task/worker in the list, the task matcher returned an invalid value
+        while self._should_scheduler_run():
+            # Get a list of available workers and tasks
+            # If none are available, then wait a little and try again
+            worker_list = self._get_worker_list()
+            if len(worker_list) == 0:
+                self._wait_for_worker()
+                continue
             task_list = self._task_queue.get_data()
+            
+            # Try to match one of the tasks with one of the workers
+            # If no suitable match is found, wait a little and try again
             logging.info("Matching task with a worker")
-            try:
-                matched_task, matched_worker = self._task_matcher(task_list, worker_list)
-            except:
-                matched_worker = worker_list[0]
-                matched_task = task_list[0]
-            if worker_list.count(matched_worker) == 0: matched_worker = worker_list[0]
+            matched_task, matched_worker = self._match_worker_and_task(task_list, worker_list)
+            if not matched_task:
+                self._wait_for_worker()
+                continue
             
-            # Remove the task from the queue
-            popped_task = self._task_queue.pop_specific(item_list=[matched_task])
-            if not popped_task: matched_task = task_list[0]
-            
-            # Reserve the worker with the interface
-            try:
-                self._interface.reserve_worker(matched_worker)
-            except:
-                pass
+            # Confirm the match and reserve the task and worker
+            self._reserve_task_worker(matched_task, matched_worker)
             
             # Wait until other tasks have been submitted and the thread count decreases,
             # otherwise we might pass the process resource limitations
@@ -290,7 +354,7 @@ class PyMW_Scheduler:
         self._running = False
     
     # Use this wrapper function to catch any interface exceptions,
-    # otherwise we get hanging threads
+    # otherwise we can get hanging threads
     def _task_executor(self, execute_task_func, next_task, worker):
         try:
             next_task._times["execute_time"] = time.time()
