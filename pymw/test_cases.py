@@ -23,6 +23,8 @@ def square(list1):
 def plus(list2):
     return sum(list2)
 
+# TODO: add test case for killing workers
+
 class TestPyMW(unittest.TestCase):
     def setUp(self):
         self.pymw_master = pymw.PyMW_Master()
@@ -70,8 +72,15 @@ class TestPyMW(unittest.TestCase):
         self.assert_(my_task._stdout == "stdout test")
         self.assert_(my_task._stderr == "stderr test")
     
-    # TODO: add test case for killing workers
-    
+    # Tests standard operation of MapReduce class
+    def testMapReduce(self):
+        num_tasks = 10
+        actual_total = 2870
+        pymw_mapreduce=pymw.PyMW_MapReduce(self.pymw_master)
+        task_MR = pymw_mapreduce.submit_task_mapreduce(square, plus, num_tasks, input_data=range(1,21), modules=(), dep_funcs=())
+        my_task, result = self.pymw_master.get_result(task_MR)
+        self.assert_(sum(result) == actual_total)
+        
     # Tests standard operation with null worker program
     def testStandardOperation(self):
         num_tasks = 10
@@ -108,13 +117,6 @@ class TestPyMW(unittest.TestCase):
             self.assert_(my_task.get_execution_time() >= 0)
             pymw_total += next_val
         self.assert_(pymw_total == actual_total)
-        
-        # MapReduce test
-        actual_total = 2870
-        pymw_mapreduce=pymw.PyMW_MapReduce(self.pymw_master)
-        task_MR = pymw_mapreduce.submit_task_mapreduce(square, plus, num_tasks, input_data=range(1,21), modules=(), dep_funcs=())
-        my_task, result = self.pymw_master.get_result(task_MR)
-        self.assert_(sum(result) == actual_total)
 
 if __name__ == '__main__':
         unittest.main()
