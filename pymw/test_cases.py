@@ -1,6 +1,9 @@
 from pymw import *
 import unittest
 import sys
+import threading
+import os
+import signal
 
 # Null function to test standard operation
 def null_worker(in_data):
@@ -28,7 +31,20 @@ def plus(list2):
 class TestPyMW(unittest.TestCase):
     def setUp(self):
         self.pymw_master = pymw.PyMW_Master()
+        self._kill_timer = threading.Timer(10, self.killAll)
+        self._kill_timer.start()
+
+    def killAll(self):
+        print
+        print "Test failed to finish after 10 seconds, aborting."
+        print "WARNING: there may be unfinished child processes."
+        pgid = os.getpgid(0)
+        os.killpg(pgid, signal.SIGKILL)
+        os.abort()
     
+    def tearDown(self):
+        self._kill_timer.cancel()
+        
     # Tests that getting the result of a non-submitted task returns an error
     def testGetResultNoSubmit(self):
         task = self.pymw_master.submit_task(executable=null_worker, input_data=(1,))
@@ -119,4 +135,6 @@ class TestPyMW(unittest.TestCase):
         self.assert_(pymw_total == actual_total)
 
 if __name__ == '__main__':
-        unittest.main()
+    suite = unittest.TestLoader().loadTestsFromTestCase(TestPyMW)
+    unittest.TextTestRunner(verbosity=2).run(suite)
+    
