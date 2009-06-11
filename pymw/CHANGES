@@ -1,4 +1,9 @@
 
+Changes in 0.3
+- Added MapReduce class for use with PyMW
+- Added interface for performing simulations
+- Added worker-task matching functionality
+
 Changes in 0.2
 - Added support for computing in Condor grids.
 - Added more efficient communication for multicore interface.

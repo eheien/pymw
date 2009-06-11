@@ -1,6 +1,7 @@
 include examples/prime_finder.py
 include examples/monte_pi.py
 include examples/null_test.py
+include examples/worker_sim.py
 include README
 include COPYING
 include pymw/interfaces/assimilator*
