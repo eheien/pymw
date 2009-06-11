@@ -69,7 +69,7 @@ for daemon in config.daemons:
 	config.daemons.remove_node(daemon)
 
 # Append new instance of pymw_assimilator to config.xml
-config.daemons.make_node_and_append("daemon").cmd = "pymw_assimilator -d 3 -app pymw -pymw_dir " + pymw_dir
+config.daemons.make_node_and_append("daemon").cmd = "pymw_assimilator.py -d 3 -app pymw -pymw_dir " + pymw_dir
 config.write()
 
 # Append new instance of pymw worker to project.xml
@@ -96,7 +96,7 @@ else:
     os.mkdir(app_dir)
     # Platform strings
     i686_pc_linux_gnu = "pymw_1.00_i686-pc-linux-gnu"
-    windows_intelx86  = "pymw_1.00_windows_intelx86"
+    windows_intelx86  = "pymw_1.00_windows_intelx86.exe"
     i686_apple_darwin = "pymw_1.00_i686-apple-darwin"
     # i686-pc-linux-gnu
     logging.info("setting up client application for Linux platform")
