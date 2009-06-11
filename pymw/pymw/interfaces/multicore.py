@@ -49,12 +49,17 @@ class MulticoreInterface:
         self._output_objs = {}
         self._execute_time=[]
         self.pymw_interface_modules = "cPickle", "sys", "cStringIO"
+        self._worker_lock = threading.Condition()
         for worker_num in range(num_workers):
             w = Worker()
             self._available_worker_list.append(w)
             self._worker_list.append(w)
     
     def get_available_workers(self):
+    	self._worker_lock.acquire()
+        while len(self._available_worker_list) == 0:
+            self._worker_lock.wait()
+        self._worker_lock.acquire()
         return list(self._available_worker_list)
     
     def reserve_worker(self, worker):
@@ -116,7 +121,7 @@ class MulticoreInterface:
             outfile.close()
         print cPickle.dumps(output)
 
-    def pymw_worker_func(func_name_to_call, file_input=False): #_0
+    def pymw_worker_func(func_name_to_call, file_input=False):
         try:
             # Redirect stdout and stderr
             old_stdout, old_stderr = sys.stdout, sys.stderr

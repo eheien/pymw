@@ -182,8 +182,7 @@ class PyMW_Task:
                 self._output_data = result
 
             logging.info("Task "+str(self)+" finished")
-            
-
+        
         self._times["finish_time"] = time.time()
         self._finish_event.set()
         self._finished_queue.append(self)
@@ -244,14 +243,15 @@ class PyMW_Scheduler:
         """Waits for submissions to the task list, then submits them to the interface."""
         # While there are tasks in the queue, assign them to workers
         # NOTE: assumes that only the scheduler thread will remove tasks from the list
-        # and only the scheduler thread will call reserve_worker
+        # only the scheduler thread will call reserve_worker, and there is only one scheduler thread
         while self._task_queue.size() > 0:
             # Get a list of workers available on this interface
             # get_available_workers should block until one or more workers are available
             try:
                 worker_list = self._interface.get_available_workers()
-                if not type(worker_list)==list: worker_list = [None]
-            except AttributeError:
+                if not type(worker_list)==list or len(worker_list) == 0:
+                	worker_list = [None]
+            except:
                 worker_list = [None]
             
             # Match a worker from the list with a task
@@ -303,7 +303,7 @@ class PyMW_Scheduler:
 
 class PyMW_Master:
     """Provides functions for users to submit tasks to the underlying interface."""
-    def __init__(self, interface=None, loglevel=logging.CRITICAL, delete_files=True, file_input=False):
+    def __init__(self, interface=None, loglevel=logging.CRITICAL, delete_files=True):
         logging.basicConfig(level=loglevel, format="%(asctime)s %(levelname)s %(message)s")
 
         if interface:
@@ -319,7 +319,6 @@ class PyMW_Master:
         self._task_dir_name = "tasks"
         self._cur_task_num = 0
         self._function_source = {}
-        self._file_input = file_input
         self.pymw_interface_modules = "cPickle", "sys", "cStringIO"
 
         # Make the directory for input/output files, if it doesn't already exist
@@ -331,7 +330,7 @@ class PyMW_Master:
         self._scheduler = PyMW_Scheduler(self._queued_tasks, self._interface)
         atexit.register(self._cleanup)
     
-    def _setup_exec_file(self, file_name, main_func, modules, dep_funcs):
+    def _setup_exec_file(self, file_name, main_func, modules, dep_funcs, file_input):
         """Sets up a script file for executing a function.  This file
         contains the function source, dependent functions, dependent
         modules and PyMW calls to get the input data and return the
@@ -369,13 +368,13 @@ class PyMW_Master:
         for module_name in modules+interface_modules:
             func_file.write("import "+module_name+"\n")
         func_file.writelines(func_data[1])
-        if self._file_input==True:
+        if file_input:
             func_file.write("pymw_worker_func("+func_data[0]+", True"+")\n")
         else:
             func_file.write("pymw_worker_func("+func_data[0]+")\n")
         func_file.close()
         
-    def submit_task(self, executable, input_data=None, modules=(), dep_funcs=()):
+    def submit_task(self, executable, input_data=None, modules=(), dep_funcs=(), input_from_file=False):
         """Creates and submits a task to the internal list for execution.
         Returns the created task for later use.
         executable can be either a filename (Python script) or a function."""
@@ -384,7 +383,7 @@ class PyMW_Master:
         if callable(executable):
             task_name = str(executable.func_name)+"_"+str(self._cur_task_num)
             exec_file_name = self._task_dir_name+"/"+str(executable.func_name)
-            self._setup_exec_file(exec_file_name, executable, modules, dep_funcs)
+            self._setup_exec_file(exec_file_name, executable, modules, dep_funcs, input_from_file)
         elif isinstance(executable, str):
             # TODO: test here for existence of script
             task_name = str(executable)+"_"+str(self._cur_task_num)
@@ -404,7 +403,7 @@ class PyMW_Master:
         new_task = PyMW_Task(task_name=task_name, executable=exec_file_name,
                              store_data_func=store_func, get_result_func=get_result_func,
                              finished_queue=self._finished_tasks, input_data=input_data,
-                             file_loc=self._task_dir_name, file_input=self._file_input)
+                             file_loc=self._task_dir_name, file_input=input_from_file)
         
         self._submitted_tasks.append(new_task)
         self._queued_tasks.append(item=new_task)

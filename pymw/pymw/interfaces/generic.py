@@ -18,14 +18,16 @@ class GenericInterface:
 	def __init__(self, num_workers=1, python_loc="python"):
 		self._num_workers = num_workers
 		self._available_worker_list = [worker_num for worker_num in range(num_workers)]
+		self._worker_lock = threading.Condition()
 		self._python_loc = python_loc
 	
 	# Wait for a worker to become available
-	# TODO: fix this to work with a condition lock
 	def get_available_workers(self):
+		self._worker_lock.acquire()
 		while len(self._available_worker_list) == 0:
-			time.sleep(0.2)
-		return self._available_worker_list
+			self._worker_lock.wait()
+		self._worker_lock.release()
+		return list(self._available_worker_list)
 	
 	def reserve_worker(self, worker):
 		self._available_worker_list.remove(worker)
@@ -51,8 +53,10 @@ class GenericInterface:
 		task.task_finished(task_error)
 		
 		# Put the worker back on the list
-		# TODO: notify any other waiting tasks
+		self._worker_lock.acquire()
 		self._available_worker_list.append(worker)
+		self._worker_lock.notify()
+		self._worker_lock.release()
 
 	def get_status(self):
 		return {"num_total_workers" : self._num_workers,
