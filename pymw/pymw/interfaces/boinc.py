@@ -3,14 +3,10 @@
 """
 
 import pymw
-import threading
-import shutil
-import os
-import sys
-import re
-import time
-import calendar
+import threading,shutil,os,sys,re
+import time,calendar
 import logging
+import boinc_setup
 
 
 __author__ = "Adam Kornafeld <kadam@sztaki.hu>"
@@ -59,21 +55,7 @@ OUTPUT_TEMPLATE = """\
 """
 
 lock = threading.Lock()
-
-#class _ResultHandler(threading.Thread):
-#    def __init__(self, task, cwd, sleeptime = 10):
-#        threading.Thread.__init__(self)
-#        self._task = task
-#        self._sleeptime = sleeptime
-#        self._cwd = cwd
-#
-#    def run(self):
-#        while 1:
-#            if os.path.isfile(os.path.join(self._cwd, self._task._output_arg)):
-#                self._task.task_finished()
-#                break
-#            #logging.debug("Waiting for result, sleeping for " + str(self._sleeptime) + " seconds...")
-#            time.sleep(self._sleeptime)
+logging.basicConfig(level=logging.DEBUG, format="%(asctime)s %(levelname)s %(message)s")
 
 class BOINCInterface:
     def __init__(self, project_home):
@@ -90,6 +72,9 @@ class BOINCInterface:
         self._task_list_lock = threading.Lock()
         self._result_checker_running = False
         self._task_finish_thread = None
+        
+        # auto-magical BOINC installation script
+        boinc_setup.install_pymw(project_home)
 
     def _get_unix_timestamp(self):
         return calendar.timegm(time.gmtime())
