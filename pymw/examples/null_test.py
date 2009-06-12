@@ -2,7 +2,6 @@
 
 from pymw import *
 import time
-import logging
 from optparse import OptionParser
 
 def null_worker(in_data):

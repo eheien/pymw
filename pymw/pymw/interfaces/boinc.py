@@ -55,7 +55,7 @@ OUTPUT_TEMPLATE = """\
 """
 
 lock = threading.Lock()
-logging.basicConfig(level=logging.DEBUG, format="%(asctime)s %(levelname)s %(message)s")
+#logging.basicConfig(level=logging.DEBUG, format="%(asctime)s %(levelname)s %(message)s")
 
 class BOINCInterface:
     def __init__(self, project_home):

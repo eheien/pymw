@@ -45,51 +45,51 @@ class TestPyMW(unittest.TestCase):
     def tearDown(self):
         self._kill_timer.cancel()
         
-    # Tests that getting the result of a non-submitted task returns an error
     def testGetResultNoSubmit(self):
+        """Tests that getting the result of a non-submitted task returns an error."""
         task = self.pymw_master.submit_task(executable=null_worker, input_data=(1,))
         self.assertRaises(pymw.TaskException, self.pymw_master.get_result, 1234)
         self.assertRaises(pymw.TaskException, self.pymw_master.get_result, [1, 2, 3, 4])
         my_task, next_val = self.pymw_master.get_result()
     
-    # Tests that getting a result with no submitted tasks returns an error
     def testGetAnyResultNoSubmit(self):
+        """Tests that getting a result with no submitted tasks returns an error."""
         self.assertRaises(pymw.TaskException, self.pymw_master.get_result)
 
-    # Tests that giving a non-existent worker executable returns an error
     def testBadExecutable(self):
+        """Tests that giving a non-existent worker executable returns an error."""
         bad_task = self.pymw_master.submit_task(executable='dead_parrot')
         self.assertRaises(Exception, self.pymw_master.get_result, bad_task)
         self.assertRaises(Exception, self.pymw_master.submit_task, executable=2)
 
-    # Tests that giving a bad executable type returns an error
     def testBadExecutableType(self):
+        """Tests that giving a bad executable type returns an error."""
         self.assertRaises(pymw.TaskException, self.pymw_master.submit_task, executable=1)
 
-    # Tests that using an invalid Python location returns an error
     def testBadPython(self):
+        """Tests that using an invalid Python location returns an error."""
         interface = pymw.interfaces.generic.GenericInterface(python_loc="/usr/local/dead_parrot/python")
         pymw_master = pymw.PyMW_Master(interface)
         task = pymw_master.submit_task(executable=null_worker, input_data=(1,))
         self.assertRaises(Exception, pymw_master.get_result, task)
 
-    # Tests that exceptions from the worker get passed back correctly
     def testProgramError(self):
+        """Tests that exceptions from the worker get passed back correctly."""
         task = self.pymw_master.submit_task(err_worker)
         try:
             self.pymw_master.get_result(task)
         except Exception, e:
             self.assert_(e[1].count("integer division or modulo by zero")>0)
     
-    # Tests that stdout and stderr are correctly routed from the workers
     def testStdoutStderr(self):
+        """Tests that stdout and stderr are correctly routed from the workers."""
         task = self.pymw_master.submit_task(print_worker, modules=("sys",))
         my_task, res = self.pymw_master.get_result(task)
         self.assert_(my_task._stdout == "stdout test")
         self.assert_(my_task._stderr == "stderr test")
     
-    # Tests standard operation of MapReduce class
     def testMapReduce(self):
+        """Tests standard operation of MapReduce class."""
         num_tasks = 10
         actual_total = 2870
         pymw_mapreduce=pymw.PyMW_MapReduce(self.pymw_master)
@@ -97,8 +97,8 @@ class TestPyMW(unittest.TestCase):
         my_task, result = self.pymw_master.get_result(task_MR)
         self.assert_(sum(result) == actual_total)
         
-    # Tests standard operation with null worker program
     def testStandardOperation(self):
+        """Tests standard operation with null worker program."""
         num_tasks = 10
         actual_total = num_tasks*(num_tasks-1)/2
 
@@ -116,7 +116,7 @@ class TestPyMW(unittest.TestCase):
             pymw_total += next_val
         self.assert_(pymw_total == actual_total)
         
-        # Test get_result for list based retrieval
+        # Test get_result for list based result retrieval
         pymw_total = 0
         for tnum in range(num_tasks):
             my_task, next_val = self.pymw_master.get_result(tasks2)
@@ -137,4 +137,3 @@ class TestPyMW(unittest.TestCase):
 if __name__ == '__main__':
     suite = unittest.TestLoader().loadTestsFromTestCase(TestPyMW)
     unittest.TextTestRunner(verbosity=2).run(suite)
-    

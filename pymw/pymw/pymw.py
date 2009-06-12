@@ -24,19 +24,25 @@ import interfaces.boinc
 import interfaces.grid_simulator
 
 class PyMW_List:
+    """A class representing a Python list with atomic operation functionality needed for PyMW."""
+    
     def __init__(self):
         self._lock = threading.Lock()
         self._add_event = threading.Condition(self._lock)
         self._data = []
     
+    def __len__(self):
+        return len(self._data)
+    
     def get_data(self):
+        """Returns a copy of the internal data list that can be modified."""
     	self._lock.acquire()
     	copy_list = list(self._data)
     	self._lock.release()
     	return copy_list
     	
     def append(self, item):
-        """Atomically appends an item to the list and notifies listeners."""
+        """Atomically appends an item to the list and notifies any waiting threads."""
         self._add_event.acquire()
         self._data.append(item)
         self._add_event.notifyAll()
@@ -48,7 +54,7 @@ class PyMW_List:
 
     def pop_specific(self, item_list=[], blocking=False):
         """Waits for any item from item_list to appear, and pops it off.
-        An empty list indicates any item is acceptable."""
+        An empty item_list indicates any item is acceptable."""
         item_set = set(item_list)
         self._add_event.acquire()
         while True:
@@ -73,8 +79,7 @@ class PyMW_List:
             # wait for a notification from a new item being added
             if blocking:
                 self._add_event.wait()
-            # If we didn't find anything and we should not block,
-            # return None
+            # If we didn't find anything and we should not block, return None
             else:
                 self._add_event.release()
                 return None
@@ -86,9 +91,6 @@ class PyMW_List:
         self._add_event.release()
         if n != 0: return True
         else: return False
-    
-    def size(self):
-        return len(self._data)
 
 class TaskException(Exception):
     """Represents an exception caused by a task failure."""
@@ -127,7 +129,7 @@ class PyMW_Task:
         self._store_data_func = store_data_func
         self._file_input = file_input
 
-        # Set the input and output file locations        
+        # Set the input and output file locations
         if input_arg:
             self._input_arg = input_arg
         else:
@@ -257,7 +259,7 @@ class PyMW_Scheduler:
     
     # Returns true if the scheduler should continue running
     def _should_scheduler_run(self):
-        return (self._task_queue.size() > 0)
+        return (len(self._task_queue) > 0)
     
     # Get a list of workers available on this interface
     def _get_worker_list(self):
