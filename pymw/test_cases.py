@@ -27,6 +27,7 @@ def plus(list2):
     return sum(list2)
 
 # TODO: add test case for killing workers
+# TODO: add test cases for interface related problems
 
 class TestPyMW(unittest.TestCase):
     def setUp(self):
@@ -46,35 +47,35 @@ class TestPyMW(unittest.TestCase):
         self._kill_timer.cancel()
         
     def testGetResultNoSubmit(self):
-        """Tests that getting the result of a non-submitted task returns an error."""
+        """Checking that getting the result of a non-submitted task returns an error"""
         task = self.pymw_master.submit_task(executable=null_worker, input_data=(1,))
         self.assertRaises(pymw.TaskException, self.pymw_master.get_result, 1234)
         self.assertRaises(pymw.TaskException, self.pymw_master.get_result, [1, 2, 3, 4])
         my_task, next_val = self.pymw_master.get_result()
     
     def testGetAnyResultNoSubmit(self):
-        """Tests that getting a result with no submitted tasks returns an error."""
+        """Checking that getting a result with no submitted tasks returns an error"""
         self.assertRaises(pymw.TaskException, self.pymw_master.get_result)
 
     def testBadExecutable(self):
-        """Tests that giving a non-existent worker executable returns an error."""
+        """Checking that giving a non-existent worker executable returns an error"""
         bad_task = self.pymw_master.submit_task(executable='dead_parrot')
         self.assertRaises(Exception, self.pymw_master.get_result, bad_task)
         self.assertRaises(Exception, self.pymw_master.submit_task, executable=2)
 
     def testBadExecutableType(self):
-        """Tests that giving a bad executable type returns an error."""
+        """Checking that giving a bad executable type returns an error"""
         self.assertRaises(pymw.TaskException, self.pymw_master.submit_task, executable=1)
 
     def testBadPython(self):
-        """Tests that using an invalid Python location returns an error."""
+        """Checking that using an invalid Python location returns an error"""
         interface = pymw.interfaces.generic.GenericInterface(python_loc="/usr/local/dead_parrot/python")
         pymw_master = pymw.PyMW_Master(interface)
         task = pymw_master.submit_task(executable=null_worker, input_data=(1,))
         self.assertRaises(Exception, pymw_master.get_result, task)
 
     def testProgramError(self):
-        """Tests that exceptions from the worker get passed back correctly."""
+        """Checking that exceptions from the worker get passed back correctly."""
         task = self.pymw_master.submit_task(err_worker)
         try:
             self.pymw_master.get_result(task)
@@ -82,14 +83,14 @@ class TestPyMW(unittest.TestCase):
             self.assert_(e[1].count("integer division or modulo by zero")>0)
     
     def testStdoutStderr(self):
-        """Tests that stdout and stderr are correctly routed from the workers."""
+        """Checking that stdout and stderr are correctly routed from the workers."""
         task = self.pymw_master.submit_task(print_worker, modules=("sys",))
         my_task, res = self.pymw_master.get_result(task)
         self.assert_(my_task._stdout == "stdout test")
         self.assert_(my_task._stderr == "stderr test")
     
     def testMapReduce(self):
-        """Tests standard operation of MapReduce class."""
+        """Test standard operation of MapReduce class."""
         num_tasks = 10
         actual_total = 2870
         pymw_mapreduce=pymw.PyMW_MapReduce(self.pymw_master)
@@ -98,7 +99,7 @@ class TestPyMW(unittest.TestCase):
         self.assert_(sum(result) == actual_total)
         
     def testStandardOperation(self):
-        """Tests standard operation with null worker program."""
+        """Test standard operation with null worker program."""
         num_tasks = 10
         actual_total = num_tasks*(num_tasks-1)/2
 
