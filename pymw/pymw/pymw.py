@@ -516,8 +516,9 @@ class PyMW_Master:
     def get_status(self):
         try:
             status = self._interface.get_status()
-        except AttributeError:
-            status = {}
+        except:
+            status = {"interface_status": "error"}
+        if not type(status)==dict: status = {"interface_status": "error"}
         status["tasks"] = self._submitted_tasks
         return status
 

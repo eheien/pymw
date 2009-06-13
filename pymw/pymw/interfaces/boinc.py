@@ -136,9 +136,7 @@ class BOINCInterface:
         # Check if project_home dir is known
         if not self._project_path_exists():
             logging.critical("Missing BOINC project home directory")
-            task_error = Exception("Missing BOINC project home directory (-p switch)")
-            task.task_finished(task_error)
-            return None
+            raise Exception("Missing BOINC project home directory (-p switch)")
         
         in_file = task._input_arg.rpartition('/')[2]
         out_file = task._output_arg.rpartition('/')[2]

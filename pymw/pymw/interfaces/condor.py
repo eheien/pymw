@@ -106,30 +106,24 @@ class CondorInterface:
         if sys.platform.startswith("win"): cf=0x08000000
         else: cf=0
         
-        try:
-            # Submit the template file through condor_submit
-            submit_process = subprocess.Popen(args=[self._condor_submit_loc, submit_file_name],
-                                    creationflags=cf, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-            # Wait for the process to finish
-            proc_stdout, proc_stderr = submit_process.communicate()
-            
-            # TODO: check stdout for problems
-            if proc_stderr != "":
-                task.task_finished(Exception("condor_submit failed with error:\n"+proc_stderr))
-                return
-            
-            self._task_list_lock.acquire()
-            self._task_list.append([task, err_file_name, log_file_name, submit_file_name])
-            self._task_list_lock.release()
-            
-            if not self._result_checker_running:
-                self._result_checker_running = True
-                self._task_finish_thread = threading.Thread(target=self._get_finished_tasks)
-                self._task_finish_thread.start()
-            
-        except OSError:
-            # TODO: check the actual error code
-            task.task_finished(Exception("Could not find task submission program "+self._condor_submit_loc))
+        # Submit the template file through condor_submit
+        submit_process = subprocess.Popen(args=[self._condor_submit_loc, submit_file_name],
+                                creationflags=cf, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        # Wait for the process to finish
+        proc_stdout, proc_stderr = submit_process.communicate()
+        
+        # TODO: check stdout for problems
+        if proc_stderr != "":
+            raise Exception("condor_submit failed with error:\n"+proc_stderr)
+        
+        self._task_list_lock.acquire()
+        self._task_list.append([task, err_file_name, log_file_name, submit_file_name])
+        self._task_list_lock.release()
+        
+        if not self._result_checker_running:
+            self._result_checker_running = True
+            self._task_finish_thread = threading.Thread(target=self._get_finished_tasks)
+            self._task_finish_thread.start()
     
     def _cleanup(self):
         self._scan_finished_tasks = False

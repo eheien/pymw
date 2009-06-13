@@ -67,29 +67,21 @@ class MulticoreInterface:
         # Pickle the input argument and remove it from the list
         input_obj_str = cPickle.dumps(self._input_objs[task._input_arg])
 
-        try:
-            worker._exec_process = subprocess.Popen(args=[self._python_loc, task._executable, task._input_arg, task._output_arg],
-                                                    creationflags=cf, stdin=subprocess.PIPE,
-                                                    stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-            # Wait for the process to finish
-            proc_stdout, proc_stderr = worker._exec_process.communicate(input_obj_str)
-            retcode = worker._exec_process.returncode
-            if retcode is 0:
-                self._output_objs[task._output_arg] = cPickle.loads(proc_stdout)
-                if task._file_input==True:
-                    self._output_objs[task._output_arg][0]=[task._output_arg]
-            	task_error = None
-            else:
-                task_error = Exception("Executable failed with error "+str(retcode), proc_stderr)
+        worker._exec_process = subprocess.Popen(args=[self._python_loc, task._executable, task._input_arg, task._output_arg],
+                                                creationflags=cf, stdin=subprocess.PIPE,
+                                                stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        # Wait for the process to finish
+        proc_stdout, proc_stderr = worker._exec_process.communicate(input_obj_str)
+        retcode = worker._exec_process.returncode
+        if retcode is 0:
+            self._output_objs[task._output_arg] = cPickle.loads(proc_stdout)
+            if task._file_input==True:
+                self._output_objs[task._output_arg][0]=[task._output_arg]
+        else:
+            raise Exception("Executable failed with error "+str(retcode), proc_stderr)
                 
-        except OSError, e:
-            if e.errno == errno.EEXIST:
-            	task_error = Exception("Could not find python")
-            else:
-        		raise
-        
         worker._exec_process = None
-        task.task_finished(task_error)    # notify the task
+        task.task_finished()    # notify the task
 
     def _cleanup(self):
         for worker in self._worker_list:
