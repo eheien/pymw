@@ -25,11 +25,11 @@ class GenericInterface:
 		return list(self._available_worker_list)
 	
 	def reserve_worker(self, worker):
-		"""Reserve a given worker such that it will not be returned by get_available_workers."""
+		"""Remove a given worker from the pool of available workers."""
 		self._available_worker_list.remove(worker)
 	
 	def worker_finished(self, worker):
-		"""Return a given worker to the pool such that it will be returned by get_available_workers."""
+		"""Return a given worker to the pool of available workers."""
 		self._available_worker_list.append(worker)
 	
 	def execute_task(self, task, worker):
