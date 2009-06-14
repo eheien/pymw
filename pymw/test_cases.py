@@ -26,7 +26,7 @@ def square(list1):
 def plus(list2):
     return sum(list2)
 
-def killAll(self):
+def killAll():
     print
     print "ERROR: Test failed to finish after 10 seconds, aborting."
     print "WARNING: there may be unfinished child processes."
