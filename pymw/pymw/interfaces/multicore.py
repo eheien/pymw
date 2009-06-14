@@ -97,49 +97,35 @@ class MulticoreInterface:
     def pymw_master_write(self, output, loc):
     	self._input_objs[loc] = output
     
-    def pymw_worker_read(loc):
+    def pymw_worker_read(options):
         return cPickle.Unpickler(sys.stdin).load()
     
-    def pymw_worker_write(output, loc, file_input):
-        if file_input==True:
-            outfile = open(loc, 'w')
+    def pymw_worker_write(output, options):
+        if "file_input" in options:
+            outfile = open(sys.argv[2], 'w')
             cPickle.Pickler(outfile).dump(output[0])
             outfile.close()
         print cPickle.dumps(output)
 
-    def pymw_worker_func(func_name_to_call, file_input=False):
-        try:
-            # Redirect stdout and stderr
-            old_stdout, old_stderr = sys.stdout, sys.stderr
-            sys.stdout, sys.stderr = cStringIO.StringIO(), cStringIO.StringIO()
-            # Get the input data
-            input_data = pymw_worker_read(0)
-            if not input_data: input_data = ()
-            # Execute the worker function
-            if file_input:
-                try:
-                    f=open(input_data[0][0],"r")
-                    filedata=cPickle.loads(f.read())
-                except:
-                    filedata=[]
-                    for i in input_data[0]:
-                        num=0
-                        for j in xrange(len(i)/3):
-                            f=open(i[num+0],"r")
-                            f.seek(i[num+1])
-                            filedata.append(f.read(i[num+2]-i[num+1]))
-                            num+=3
-                result = func_name_to_call(filedata)
-            else:
-                result = func_name_to_call(*input_data)
-            # Get any stdout/stderr printed during the worker execution
-            out_str, err_str = sys.stdout.getvalue(), sys.stderr.getvalue()
-            sys.stdout.close()
-            sys.stderr.close()
-            # Revert stdout/stderr to originals
-            sys.stdout, sys.stderr = old_stdout, old_stderr
-            pymw_worker_write([result, out_str, err_str], sys.argv[2], file_input)
-        except Exception, e:
-            sys.stdout = old_stdout
-            sys.stderr = old_stderr
-            exit(e)
+    def pymw_worker_func(func_name_to_call, options):
+        # Get the input data
+        input_data = pymw_worker_read(options)
+        if not input_data: input_data = ()
+        # Execute the worker function
+        if "file_input" in options:
+            try:
+                f=open(input_data[0][0],"r")
+                filedata=cPickle.loads(f.read())
+            except:
+                filedata=[]
+                for i in input_data[0]:
+                    num=0
+                    for j in xrange(len(i)/3):
+                        f=open(i[num+0],"r")
+                        f.seek(i[num+1])
+                        filedata.append(f.read(i[num+2]-i[num+1]))
+                        num+=3
+            result = func_name_to_call(filedata)
+        else:
+            result = func_name_to_call(*input_data)
+        pymw_emit_result(result)

@@ -15,6 +15,7 @@ import atexit
 import errno
 import logging
 import inspect
+import signal
 import textwrap
 import interfaces.generic
 import interfaces.multicore
@@ -394,7 +395,8 @@ class PyMW_Master:
             if e.errno <> errno.EEXIST: raise
 
         self._scheduler = PyMW_Scheduler(self._queued_tasks, self._interface)
-        atexit.register(self._cleanup)
+        atexit.register(self._cleanup, None, None)
+        #signal.signal(signal.SIGKILL, self._cleanup)
     
     def _setup_exec_file(self, file_name, main_func, modules, dep_funcs, file_input):
         """Sets up a script file for executing a function.  This file
@@ -404,6 +406,7 @@ class PyMW_Master:
         
         # If the interface doesn't provide methods for communicating with the workers, use default functions
         all_funcs = (main_func,)+dep_funcs
+        all_funcs += (self._pymw_worker_manager, self.pymw_emit_result, )
         try:
             all_funcs += (self._interface.pymw_worker_read, self._interface.pymw_worker_write)
         except AttributeError:
@@ -430,17 +433,16 @@ class PyMW_Master:
 
         func_data = self._function_source[func_hash]
         func_file = open(file_name, "w")
-        # TODO: make these interface-dependent
+        # Create the necessary imports and function calls in the worker script
         for module_name in modules+interface_modules:
             func_file.write("import "+module_name+"\n")
         func_file.writelines(func_data[1])
-        if file_input:
-            func_file.write("pymw_worker_func("+func_data[0]+", True"+")\n")
-        else:
-            func_file.write("pymw_worker_func("+func_data[0]+")\n")
+        run_options = []
+        if file_input: run_options.append("file_input")
+        func_file.write("_pymw_worker_manager("+func_data[0]+", "+str(run_options)+")\n")
         func_file.close()
         
-    def submit_task(self, executable, input_data=None, modules=(), dep_funcs=(), input_from_file=False):
+    def submit_task(self, executable, input_data=None, modules=(), dep_funcs=(), external_files={}, input_from_file=False):
         """Creates and submits a task to the internal list for execution.
         Returns the created task for later use.
         executable can be either a filename (Python script) or a function."""
@@ -469,7 +471,8 @@ class PyMW_Master:
         new_task = PyMW_Task(task_name=task_name, executable=exec_file_name,
                              store_data_func=store_func, get_result_func=get_result_func,
                              finished_queue=self._finished_tasks, input_data=input_data,
-                             file_loc=self._task_dir_name, file_input=input_from_file)
+                             file_loc=self._task_dir_name, #extra_files=external_files,
+                             file_input=input_from_file)
         
         self._submitted_tasks.append(new_task)
         self._queued_tasks.append(item=new_task)
@@ -522,7 +525,7 @@ class PyMW_Master:
         status["tasks"] = self._submitted_tasks
         return status
 
-    def _cleanup(self):
+    def _cleanup(self, signum, frame):
         self._scheduler._exit()
         
         try:
@@ -559,29 +562,32 @@ class PyMW_Master:
         cPickle.Pickler(outfile).dump(output)
         outfile.close()
     
-    def pymw_worker_read(loc):
-        infile = open(loc, 'r')
+    def pymw_worker_read(options):
+        infile = open(sys.argv[1], 'r')
         obj = cPickle.Unpickler(infile).load()
         infile.close()
         return obj
 
-    def pymw_worker_write(output, loc):
-        outfile = open(loc, 'w')
+    def pymw_worker_write(output, options):
+        outfile = open(sys.argv[2], 'w')
         cPickle.Pickler(outfile).dump(output)
         outfile.close()
 
-    def pymw_worker_func(func_name_to_call):
+    def pymw_emit_result(result):
+        global _res_array
+        _res_array.append(result)
+    
+    def _pymw_worker_manager(func_name_to_call, options):
+        global _res_array
+        _res_array = []
         try:
             # Redirect stdout and stderr
             old_stdout = sys.stdout
             old_stderr = sys.stderr
             sys.stdout = cStringIO.StringIO()
             sys.stderr = cStringIO.StringIO()
-            # Get the input data
-            input_data = pymw_worker_read(sys.argv[1])
-            if not input_data: input_data = ()
-            # Execute the worker function
-            result = func_name_to_call(*input_data)
+            # Call the worker function
+            pymw_worker_func(func_name_to_call, options)
             # Get any stdout/stderr printed during the worker execution
             out_str = sys.stdout.getvalue()
             err_str = sys.stderr.getvalue()
@@ -590,11 +596,21 @@ class PyMW_Master:
             # Revert stdout/stderr to originals
             sys.stdout = old_stdout
             sys.stderr = old_stderr
-            pymw_worker_write([result, out_str, err_str], sys.argv[2])
+            # TODO: modify this to deal with other options (multiple results, etc)
+            pymw_worker_write([_res_array[0], out_str, err_str], options)
         except Exception, e:
             sys.stdout = old_stdout
             sys.stderr = old_stderr
             exit(e)
+        
+    def pymw_worker_func(func_name_to_call, options):
+        # Get the input data
+        input_data = pymw_worker_read(options)
+        if not input_data: input_data = ()
+        # Execute the worker function
+        result = func_name_to_call(*input_data)
+        # Output the result
+        pymw_emit_result(result)
 
 class PyMW_MapReduce:
     def __init__(self, master):

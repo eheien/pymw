@@ -127,42 +127,11 @@ class CondorInterface:
     
     def _cleanup(self):
         self._scan_finished_tasks = False
-    
-    def pymw_master_read(self, loc):
-        infile = open(loc, 'r')
-        obj = cPickle.Unpickler(infile).load()
-        infile.close()
-        return obj
-    
-    def pymw_master_write(self, output, loc):
-        outfile = open(loc, 'w')
-        cPickle.Pickler(outfile).dump(output)
-        outfile.close()
-    
-    def pymw_worker_read(loc):
+
+    # Worker I/O functions to read/write to stdio
+    def pymw_worker_read(options):
         obj = cPickle.Unpickler(sys.stdin).load()
         return obj
     
-    def pymw_worker_write(output, loc):
+    def pymw_worker_write(output, options):
         print cPickle.dumps(output)
-
-    def pymw_worker_func(func_name_to_call):
-        try:
-            # Redirect stdout and stderr
-            old_stdout, old_stderr = sys.stdout, sys.stderr
-            sys.stdout, sys.stderr = cStringIO.StringIO(), cStringIO.StringIO()
-            # Get the input data
-            input_data = pymw_worker_read(0)
-            if not input_data: input_data = ()
-            # Execute the worker function
-            result = func_name_to_call(*input_data)
-            # Get any stdout/stderr printed during the worker execution
-            out_str, err_str = sys.stdout.getvalue(), sys.stderr.getvalue()
-            sys.stdout.close()
-            sys.stderr.close()
-            # Revert stdout/stderr to originals
-            sys.stdout, sys.stderr = old_stdout, old_stderr
-            pymw_worker_write([result, out_str, err_str], 0)
-        except Exception, e:
-            sys.stdout, sys.stderr = old_stdout, old_stderr
-            exit(e)
