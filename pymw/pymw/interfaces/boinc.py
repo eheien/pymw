@@ -98,7 +98,7 @@ class BOINCInterface:
                         if os.path.isfile(out_file):
                             task.task_finished()
                             self._task_list.remove(entry)
-            
+                     
                     if len(self._task_list) == 0:
                         self._result_checker_running = False
                         return
@@ -117,7 +117,8 @@ class BOINCInterface:
         Appends a task,output tuple to the task list and then
         attempts to start the result checker thread if not already running.
         """
-        
+        # force an absolute path to prevent CWD bugs
+        output_file = os.path.abspath(output_file)
         self._task_list_lock.acquire()
         try: self._task_list.append((task,output_file))
         finally: self._task_list_lock.release()
@@ -138,9 +139,9 @@ class BOINCInterface:
             logging.critical("Missing BOINC project home directory")
             raise Exception("Missing BOINC project home directory (-p switch)")
         
-        in_file = task._input_arg.rpartition('/')[2]
-        out_file = task._output_arg.rpartition('/')[2]
-        task_exe = task._executable.rpartition('/')[2]
+        in_file = os.path.basename(task._input_arg)
+        out_file = os.path.basename(task._output_arg)
+        task_exe = os.path.basename(task._executable)
 
         # Block concurrent threads until changing directories
         lock.acquire()
@@ -158,14 +159,14 @@ class BOINCInterface:
                 raise
             
             #logging.debug("found in_dest: %s" % in_dest)
-            in_dest_dir = in_dest.rpartition('/')[0]
+            in_dest_dir = os.path.dirname(in_dest)
             cmd = "cd " + self._project_home + ";./bin/dir_hier_path " + task_exe
     
             p = os.popen(cmd, "r")
             try: exe_dest = p.read().strip()
             finally: p.close()
             
-            exe_dest_dir = exe_dest.rpartition('/')[0]
+            exe_dest_dir = os.path.dirname(exe_dest)
         
             # Copy input files to download dir
             if not os.path.isfile(exe_dest):
