@@ -132,17 +132,12 @@ def setup_config(task_path):
     logging.info("Adding PyMW Assimilator daemon to config.xml")
     config = configxml.ConfigFile().read()
     
-    ## Remove old instances of pymw_assimilator
-    #for daemon in config.daemons:
-    #    if daemon.cmd[0:16] == 'pymw_assimilator':
-    #        config.daemons.remove_node(daemon)
-    
     # Append new instance of pymw_assimilator to config.xml
     asm = "pymw_assimilator.py -d 3 -app pymw -pymw_dir " + task_path
     add_daemon(config, asm, "pymw_assimilator")
 
     # add a file deleter, ignoring batches
-    asm = "file_deleter -d 3 -ignore_batches"
+    asm = "file_deleter -d 3 -dont_delete_batches"
     add_daemon(config, asm, "file_deleter")
     
     # add a default validator
@@ -155,8 +150,6 @@ def setup_config(task_path):
     asm = "transitioner -d 3"
     add_daemon(config, asm, "transitioner")
     
-    #config.daemons.make_node_and_append("daemon").cmd = asm
-    #config.write()
     return config
 
 def add_daemon(config, command, remove):

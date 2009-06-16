@@ -222,14 +222,6 @@ class BOINCInterface:
         # Add the task to the current task reclamation queue
         self._queue_task(task, task._output_arg)
         
-        # TODO: remove old stuff below
-        #tasks = []
-        #result = _ResultHandler(task, self._cwd, 10)
-        #tasks.append(result)
-        #result.start()        
-        #for result in tasks:
-        #    result.join()
-        
     def _cleanup(self):
         if self._result_checker_running:
             self._task_list_lock.acquire()
