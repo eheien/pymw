@@ -618,7 +618,22 @@ class PyMW_MapReduce:
         self._master=master
         self._task_dir_name = "tasks"
         
-    def submit_task_mapreduce(self, exec_map, exec_reduce, num_worker=1, input_data=None, modules=(), dep_funcs=()):
+    def _data_split(self, data, num):
+        q1=len(data)/num
+        q2=len(data)%num
+        res=[]
+        p=0
+        for i in xrange(num):
+            j=0
+            if q2>0:
+                j=1
+                q2-=1
+            res.append(data[p:p+q1+j])
+            p=p+q1+j
+        return res
+
+        
+    def submit_task_mapreduce(self, exec_map, exec_reduce, num_worker=1, input_data=None, modules=(), dep_funcs=(), red_worker=-1, file_input=False):
         task_name = str(exec_map.func_name)+"_"+str(exec_reduce.func_name)+"_MR"
         exec_file_name = self._task_dir_name+"/"+task_name
         
@@ -636,35 +651,57 @@ class PyMW_MapReduce:
         
         self._master._submitted_tasks.append(new_maintask)
         #start mapreduce_thread 
-        thread1 = threading.Thread(target=self.mapreduce_thread, args=(new_maintask, exec_map, exec_reduce, num_worker, input_data, modules, dep_funcs))
+        thread1 = threading.Thread(target=self.mapreduce_thread, args=(new_maintask, exec_map, exec_reduce, num_worker, input_data, modules, dep_funcs,red_worker,file_input))
         thread1.start()
         
         return new_maintask
         
-    def mapreduce_thread(self, new_maintask, exec_map, exec_reduce, num_worker, input_data, modules=(), dep_funcs=()):
+    def mapreduce_thread(self, new_maintask, exec_map, exec_reduce, num_worker, input_data, modules=(), dep_funcs=(), red_worker=-1, file_input=False):
+
+        split_data=self._data_split(input_data,num_worker)
         
-        per = len(input_data) / num_worker
-        
-        split_data = []
-        mod=len(input_data) - per * num_worker
-        p=0
-        for i in range(num_worker):
-            j=0
-            if mod>0:
-                j=1
-                mod-=1
-            split_data.append(input_data[p:p+per+j])
-            p=p+per+j
+        if file_input:
+            size=0
+            for i in input_data: size+=os.path.getsize(i[0])
+            size_list=[]
+            for i in self._data_split(range(size),num_worker): size_list.append(i[-1]+1-i[0])
+            size_num=0
+            rest=size_list[size_num]
+            split_data, data_block = [],[]
+            for i in input_data: # for each files
+                pos=0
+                file_size=os.path.getsize(i[0])
+                while pos<file_size:
+                    if file_size-pos < rest:
+                        data_block.append([i[0],pos,file_size])
+                        rest-=file_size-pos
+                        pos=file_size
+                    else:
+                        data_block.append([i[0],pos,pos+rest])
+                        pos+=rest
+                        split_data.append(data_block)
+                        data_block=[]
+                        size_num+=1
+                        if size_num!=num_worker : rest=size_list[size_num]
         
         maptasks = []            
         for i in range(num_worker):
-            maptasks.append(self._master.submit_task(exec_map , input_data=(split_data[i],), modules=modules, dep_funcs=dep_funcs))
+            maptasks.append(self._master.submit_task(exec_map , input_data=(split_data[i],), modules=modules, dep_funcs=dep_funcs, input_from_file=file_input))
         
         reducetasks = []
+        res_list=[]
         for i in xrange(len(maptasks)):
             res_task,result = self._master.get_result(maptasks)
             maptasks.remove(res_task)
-            reducetasks.append(self._master.submit_task(exec_reduce, input_data=(result,), modules=modules, dep_funcs=dep_funcs))
+            if red_worker==-1: # map_num == reduce_num
+                reducetasks.append(self._master.submit_task(exec_reduce, input_data=(result,), modules=modules, dep_funcs=dep_funcs, input_from_file=file_input))
+            else:
+                res_list+=result
+        
+        if red_worker!=-1: # map_num > reduce_num
+            res_split=self._data_split(res_list, red_worker)
+            for i in xrange(red_worker):
+                reducetasks.append(self._master.submit_task(exec_reduce, input_data=(res_split[i],), modules=modules, dep_funcs=dep_funcs, input_from_file=file_input))
 
         result_list = []
         for i in xrange(len(reducetasks)):
