@@ -2,7 +2,6 @@
 """Provide a BOINC interface for master worker computing with PyMW.
 """
 
-import pymw
 import threading,shutil,os,sys,re
 import time,calendar
 import logging
@@ -94,11 +93,13 @@ class BOINCInterface:
                 try:
                     for entry in self._task_list:
                         task,out_file = entry
-                        # Check for the output file
+                        # Check for the output files
                         if os.path.isfile(out_file):
                             task.task_finished()
                             self._task_list.remove(entry)
-                     
+                        elif os.path.isfile(out_file + ".error"):
+                            # error results come back with a ".error" extension
+                            raise Exception("Task computation failed")
                     if len(self._task_list) == 0:
                         self._result_checker_running = False
                         return
