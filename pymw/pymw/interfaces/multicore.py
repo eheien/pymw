@@ -105,6 +105,7 @@ class MulticoreInterface:
             outfile = open(sys.argv[2], 'w')
             cPickle.Pickler(outfile).dump(output[0])
             outfile.close()
+            output[0]=None
         print cPickle.dumps(output)
 
     def pymw_worker_func(func_name_to_call, options):
@@ -113,18 +114,16 @@ class MulticoreInterface:
         if not input_data: input_data = ()
         # Execute the worker function
         if "file_input" in options:
+            filedata=[]
             try:
-                f=open(input_data[0][0],"r")
-                filedata=cPickle.loads(f.read())
-            except:
-                filedata=[]
                 for i in input_data[0]:
-                    num=0
-                    for j in xrange(len(i)/3):
-                        f=open(i[num+0],"r")
-                        f.seek(i[num+1])
-                        filedata.append(f.read(i[num+2]-i[num+1]))
-                        num+=3
+                    f=open(i,"r")
+                    filedata+=cPickle.loads(f.read())
+            except:
+                for i in input_data[0]:
+                    f=open(i[0],"r")
+                    f.seek(i[1])
+                    filedata.append(f.read(i[2]-i[1]))
             result = func_name_to_call(filedata)
         else:
             result = func_name_to_call(*input_data)
