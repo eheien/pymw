@@ -236,17 +236,15 @@ class BOINCInterface:
             return None
 
         # setup access to the BOINC database support
-        bin_path = os.path.join(self._project_home, "bin")
+        bin_path = os.path.join(self._project_home, "py")
         if not bin_path in sys.path:
             sys.path.append(bin_path)
 
-        # BOINC will search for config files using these vars
-        os.environ['BOINC_CONFIG_XML'] = os.path.join(self._project_home, 'config.xml')
-        os.environ['BOINC_PROJECT_XML'] = os.path.join(self._project_home, 'project.xml')
-        os.environ['BOINC_RUN_STATE_XML'] = os.path.join(self._project_home, 'run_state.xml')
+        # BOINC will search for config files using this var
+        os.environ['BOINC_PROJECT_DIR'] = self._project_home
         
         # load the BOINC database module
-        import database
+        from Boinc import database
         
         # query the database for the batch and zero out every WU
         database.connect()

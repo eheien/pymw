@@ -63,16 +63,14 @@ def boinc_import_hack(proj_path):
     """
     global configxml,projectxml
     
-    bin_path = os.path.join(proj_path, "bin")
+    bin_path = os.path.join(proj_path, "py")
     if not bin_path in sys.path:
         sys.path.append(bin_path)
     
     # BOINC will search for config files using these vars
-    os.environ['BOINC_CONFIG_XML'] = os.path.join(proj_path, 'config.xml')
-    os.environ['BOINC_PROJECT_XML'] = os.path.join(proj_path, 'project.xml')
-    os.environ['BOINC_RUN_STATE_XML'] = os.path.join(proj_path, 'run_state.xml')
+    os.environ['BOINC_PROJECT_DIR'] = proj_path
     
-    import configxml,projectxml
+    from Boinc import configxml,projectxml
 
 def get_winworker_path():
     """Gets the path to the WINDOWS_WORKER
