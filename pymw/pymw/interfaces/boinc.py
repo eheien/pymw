@@ -99,7 +99,11 @@ class BOINCInterface:
                             self._task_list.remove(entry)
                         elif os.path.isfile(out_file + ".error"):
                             # error results come back with a ".error" extension
-                            raise Exception("Task computation failed")
+                            f = open(out_file + ".error")
+                            try: error_message = "\n".join(f.readlines())
+                            finally: f.close()
+                            task.task_finished(task_err=Exception("BOINC computation failed:\n " + error_message))
+                            self._task_list.remove(entry)
                     if len(self._task_list) == 0:
                         self._result_checker_running = False
                         return
