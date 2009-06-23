@@ -261,3 +261,14 @@ class BOINCInterface:
                 wu.commit()
         finally:
             database.close()
+        
+    def pymw_worker_funca(func_name_to_call, options):
+        # Get the input data
+        input_data = pymw_worker_read(options)
+        if not input_data: input_data = ()
+        # Execute the worker function
+        result = func_name_to_call(*input_data)
+        # Output the result
+        pymw_emit_result(result)
+        open("boinc_finish_called", "w").close()
+        

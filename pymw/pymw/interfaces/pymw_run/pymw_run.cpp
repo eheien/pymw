@@ -47,10 +47,6 @@ int _tmain(int argc, _TCHAR* argv[])
 	// save the result incase the interpreter exits abnormally
 	int result = run_proc(exe);
 
-	// touch the boinc_finish_called file
-	_tcscpy_s(exe,256,_T("cmd.exe /C type nul > boinc_finish_called"));
-	run_proc(exe);
-
 	// cleanup and exit
 	delete [] exe;
 	if (result != 0) return 1;

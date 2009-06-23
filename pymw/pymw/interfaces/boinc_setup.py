@@ -20,7 +20,6 @@ i686_apple_darwin = "pymw_1.00_i686-apple-darwin"
 POSIX_WORKER = """\
 #!/bin/sh
 `python $1 $2 $3`
-`touch boinc_finish_called`
 """
 
 # PyMW application, helper script, shipped with BOINC program
