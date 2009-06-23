@@ -12,31 +12,14 @@ import os, logging, sys, stat, shutil
 
 
 # Platform strings, must adhere to BOINC main program naming spec
-i686_pc_linux_gnu = "pymw_1.00_i686-pc-linux-gnu"
-windows_intelx86  = "pymw_1.00_windows_intelx86.exe"
-i686_apple_darwin = "pymw_1.00_i686-apple-darwin"
+i686_pc_linux_gnu = "pymw_1.01_i686-pc-linux-gnu"
+windows_intelx86  = "pymw_1.01_windows_intelx86.exe"
+i686_apple_darwin = "pymw_1.01_i686-apple-darwin"
 
 # Worker script (the main BOINC program)
 POSIX_WORKER = """\
 #!/bin/sh
 `python $1 $2 $3`
-"""
-
-# PyMW application, helper script, shipped with BOINC program
-PYMW_APP = """\
-import sys
-import cPickle
-
-def pymw_get_input():
-    infile = open(sys.argv[1], 'r')
-    obj = cPickle.Unpickler(infile).load()
-    infile.close()
-    return obj
-
-def pymw_return_output(output):
-    outfile = open(sys.argv[2], 'w')
-    cPickle.Pickler(outfile).dump(output)
-    outfile.close()
 """
 
 # Windows worker is compiled because batch files are not
@@ -215,8 +198,6 @@ def install_windows(app_dir, app_name):
     """Installs the windows application by copying:
      - [Windows-worker].exe
      - [Windows-worker].exe.file_ref_info
-     - pymw_app.py
-     - pymw_app.py.file_ref_info
     into the apps directory of the BOINC project
     """
     # windows_intelx86
@@ -224,8 +205,6 @@ def install_windows(app_dir, app_name):
     win_dir = os.path.join(app_dir, windows_intelx86)
     win_exe = os.path.join(win_dir, windows_intelx86)
     win_exe_ref = os.path.join(win_dir, windows_intelx86 + ".file_ref_info")
-    pymw_app = os.path.join(win_dir, "pymw_app.py")
-    pymw_app_ref = os.path.join(win_dir, "pymw_app.py.file_ref_info")
     
     workerpath = get_winworker_path()
     if not workerpath or not os.path.exists(workerpath): 
@@ -238,8 +217,6 @@ def install_windows(app_dir, app_name):
         shutil.copy(workerpath, win_exe)
     
     file_exists(win_exe_ref, None, FILE_REF)
-    file_exists(pymw_app, None, PYMW_APP)
-    file_exists(pymw_app_ref, None, FILE_REF)
     
     os.chmod(win_exe, stat.S_IRWXU | stat.S_IRGRP | stat.S_IROTH)
     logging.info("Client application for Windows platform set up successfully")
@@ -248,22 +225,16 @@ def install_posix(app_dir, app_name, worker, friendly_name):
     """Installs a generic posix shell script by coping:
      - the-script
      - the-script.file_ref_info
-     - pymw_app.py
-     - pymw_app.py.file_ref_info
     into the apps directory of the BOINC project. 
     """
     logging.info("setting up client application for " + friendly_name + " platform")
     target_dir = os.path.join(app_dir, app_name)
     target_exe = os.path.join(target_dir, app_name)
     target_exe_ref = os.path.join(target_dir, app_name + ".file_ref_info")
-    pymw_app = os.path.join(target_dir, "pymw_app.py")
-    pymw_app_ref = os.path.join(target_dir, "pymw_app.py.file_ref_info")
 
     if not os.path.exists(target_dir): os.mkdir(target_dir)
     file_exists(target_exe, friendly_name, worker)
     file_exists(target_exe_ref, None, FILE_REF)
-    file_exists(pymw_app, None, PYMW_APP)
-    file_exists(pymw_app_ref, None, FILE_REF)
 
     os.chmod(target_exe, stat.S_IRWXU | stat.S_IRGRP | stat.S_IROTH)
     logging.info("client application for " + friendly_name + " platform set up successfully")     
