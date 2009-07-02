@@ -12,6 +12,17 @@ __author__ = "Adam Kornafeld <kadam@sztaki.hu>"
 __date__ = "10 April 2008"
 
 
+INPUT_ZIP_INFO = """<file_info>
+    <number>2</number>
+</file_info>"""
+
+INPUT_ZIP_REF = """    <file_ref>
+        <file_number>2<file_number>
+        <open_name><PYMW_ZIP/></open_name>
+        <copy_file/>
+    </file_ref>
+"""
+
 INPUT_TEMPLATE = """\
 <file_info>
     <number>0</number>
@@ -19,6 +30,7 @@ INPUT_TEMPLATE = """\
 <file_info>
     <number>1</number>
 </file_info>
+INPUT_ZIP_INFO
 <workunit>
     <file_ref>
         <file_number>0<file_number>
@@ -30,11 +42,13 @@ INPUT_TEMPLATE = """\
         <open_name><PYMW_INPUT/></open_name>
         <copy_file/>
     </file_ref>
+    INPUT_ZIP_REF
     <command_line><PYMW_CMDLINE/></command_line>
     <min_quorum>1</min_quorum>
     <target_nresults>1</target_nresults>
 </workunit>
 """
+
 
 OUTPUT_TEMPLATE = """\
 <file_info>
@@ -150,32 +164,33 @@ class BOINCInterface:
         in_file = os.path.basename(task._input_arg)
         out_file = os.path.basename(task._output_arg)
         task_exe = os.path.basename(task._executable)
+        zip_file = os.path.basename(task._data_file_zip)
 
         # Block concurrent threads until changing directories
         lock.acquire()
         try:
             logging.debug("Locking thread")
             logging.debug("input: %s, output: %s, task: %s" % (in_file, out_file, task_exe,))
-    
-            cmd = "cd " + self._project_home + ";./bin/dir_hier_path " + in_file
-            try:
-                p = os.popen(cmd, "r")
-                try: in_dest = p.read().strip()
-                finally: p.close()
-            except Exception,error_args:
-                logging.critical("error reading in_dest: %s" % error_args )
-                raise
             
-            #logging.debug("found in_dest: %s" % in_dest)
+            cmd = "cd " + self._project_home + ";./bin/dir_hier_path " + in_file
+            p = os.popen(cmd, "r")
+            try: in_dest = p.read().strip()
+            finally: p.close()
             in_dest_dir = os.path.dirname(in_dest)
+            
+            if zip_file:
+                cmd = "cd " + self._project_home + ";./bin/dir_hier_path " + zip_file
+                p = os.popen(cmd, "r")
+                try: in_zip = p.read().strip()
+                finally: p.close()
+                in_zip_dir = os.path.dirname(in_zip)
+            
             cmd = "cd " + self._project_home + ";./bin/dir_hier_path " + task_exe
-    
             p = os.popen(cmd, "r")
             try: exe_dest = p.read().strip()
             finally: p.close()
-            
             exe_dest_dir = os.path.dirname(exe_dest)
-        
+            
             # Copy input files to download dir
             if not os.path.isfile(exe_dest):
                 while(1):
@@ -183,12 +198,13 @@ class BOINCInterface:
                     if os.path.isfile(task._executable):
                         break
                 shutil.copyfile(task._executable, exe_dest)
-            while(1):
+            while(not os.path.isfile(task._input_arg)):
                 logging.debug("Waiting for input to become ready...")
-                if os.path.isfile(task._input_arg):
-                    break
-                
+            while(zip_file and not os.path.isfile(zip_file)):
+                logging.debug("Waiting for zip to become ready...")
+            
             shutil.copyfile(task._input_arg, in_dest)
+            shutil.copyfile(zip_file, in_zip)
                 
             # Create input XML template
             in_template = "pymw_in_" + str(task._task_name) + ".xml"
@@ -196,6 +212,15 @@ class BOINCInterface:
             boinc_in_template = self._boinc_in_template
             boinc_in_template = boinc_in_template.replace("<PYMW_EXECUTABLE/>", task_exe)
             boinc_in_template = boinc_in_template.replace("<PYMW_INPUT/>", in_file)
+            
+            if zip_file:
+                boinc_in_template = boinc_in_template.replace("INPUT_ZIP_INFO", INPUT_ZIP_INFO)
+                boinc_in_template = boinc_in_template.replace("INPUT_ZIP_REF", INPUT_ZIP_REF)
+                boinc_in_template = boinc_in_template.replace("<PYMW_ZIP/>", in_zip)
+            else:
+                boinc_in_template = boinc_in_template.replace("INPUT_ZIP_INFO", "")
+                boinc_in_template = boinc_in_template.replace("INPUT_ZIP_REF", "")
+            
             boinc_in_template = boinc_in_template.replace("<PYMW_CMDLINE/>", task_exe + " " + in_file + " " + out_file)
             logging.debug("writing in xml template: %s" % dest)
             
