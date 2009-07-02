@@ -100,15 +100,18 @@ class BOINCInterface:
                         elif os.path.isfile(out_file + ".error"):
                             # error results come back with a ".error" extension
                             f = open(out_file + ".error")
-                            try: error_message = "\n".join(f.readlines())
+                            try: error_message = "".join(f.readlines())
                             finally: f.close()
+                            os.remove(out_file + ".error")
                             task.task_finished(task_err=Exception("BOINC computation failed:\n " + error_message))
                             self._task_list.remove(entry)
                     if len(self._task_list) == 0:
                         self._result_checker_running = False
                         return
                 except Exception,data:
-                    logging.critical("_get_finished_tasks crashed: %s" % data)
+                    # just in case a higher-level process is hiding exceptions
+                    # log any exception that occures and then re-raise it
+                    logging.critical("BOINCInterface._get_finished_tasks failed: %s" % data)
                     self._result_checker_running = False
                     raise
             finally:
@@ -239,28 +242,9 @@ class BOINCInterface:
             logging.critical("Unable to cleanup batch: " + self._batch_id)
             return None
 
-        # setup access to the BOINC database support
-        bin_path = os.path.join(self._project_home, "py")
-        if not bin_path in sys.path:
-            sys.path.append(bin_path)
-
-        # BOINC will search for config files using this var
-        os.environ['BOINC_PROJECT_DIR'] = self._project_home
-        
-        # load the BOINC database module
-        from Boinc import database
-        
-        # query the database for the batch and zero out every WU
-        database.connect()
         logging.debug("Zeroing batch in BOINC db where batch = " + self._batch_id)
-
-        try:
-            units = database.Workunits.find(batch=self._batch_id)
-            for wu in units:
-                wu.batch = 0
-                wu.commit()
-        finally:
-            database.close()
+        mgr = Manager(self._project_home)
+        mgr.zero_batch(self._batch_id)
         
     def pymw_worker_func(func_name_to_call, options):
         # Get the input data
@@ -272,3 +256,71 @@ class BOINCInterface:
         pymw_emit_result(result)
         open("boinc_finish_called", "w").close()
         
+
+class Manager():
+    # This file's presence in the BOINC project directory
+    # indicates that the daemons are stopped or stopping 
+    STOP_TRIGGER = "stop_daemons"
+
+    def __init__(self, proj_path):
+        self.project_path = proj_path
+        self.Boinc = None
+        self._import_hack()
+    
+    def _import_hack(self):
+        """Imports the BOINC support code
+    
+        This is a hack because the actual path is specified at runtime
+        and so cannot be imported when the module loads. This works
+        around that issue by creating global vars for the namespaces
+        and then populating them once the path is known.
+        """
+        
+        bin_path = os.path.join(self.project_path, "py")
+        if not bin_path in sys.path:
+            sys.path.append(bin_path)
+        
+        # BOINC will search for config files using these vars
+        os.environ['BOINC_PROJECT_DIR'] = self.project_path
+        mods = ['configxml',
+                'db_base',
+                'boinc_db',
+                'database',
+                'projectxml',]
+        self.Boinc = __import__("Boinc", fromlist=mods)
+    
+    def _bin_run(self, boinc_app_name):
+        return os.system(os.path.join(self.project_path, "bin", boinc_app_name))
+    
+    def is_running(self):
+        return not os.path.exists(os.path.join(self.project_path, self.STOP_TRIGGER))
+    
+    def zero_batch(self, batch_id, cancel_workunits=False):
+        self.Boinc.database.connect()
+        
+        try:
+            units = self.Boinc.database.Workunits.find(batch=batch_id)
+            for wu in units:
+                wu.batch = 0
+                if cancel_workunits:
+                    wu.error_mask |= self.Boinc.boinc_db.WU_ERROR_CANCELED
+                    results = self.Boinc.database.Results.find(workunit=wu)
+                    for result in results:
+                        unsent = self.Boinc.boinc_db.RESULT_SERVER_STATE_UNSENT
+                        over = self.Boinc.boinc_db.RESULT_SERVER_STATE_OVER
+                        didnt_need = self.Boinc.boinc_db.RESULT_OUTCOME_DIDNT_NEED
+                        if result.server_status == unsent:
+                            result.server_status = over
+                            result.outcome = didnt_need
+                            result.commit()
+                            
+                wu.commit()
+        finally:
+            self.Boinc.database.close()
+    
+    def delete_batch(self, batch_id):
+        self.zero_batch(batch_id, cancel_workunits=True)
+        self._bin_run("file_deleter -d 3 -dont_delete_batches")
+    
+    def get_boinc_lib(self):
+        return self.Boinc

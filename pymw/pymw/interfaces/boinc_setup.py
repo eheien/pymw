@@ -94,17 +94,23 @@ def install_pymw(project_path):
     logging.debug("---------------------")
 
 def check_daemons(project_path):
-    """Checks for STOP_TRIGGER, if present calls bin/start    
+    """Checks for STOP_TRIGGER, if present calls bin/start
+    If the daemons are currently running, stops and restarts them
     """
     stopped = os.path.exists(os.path.join(project_path, STOP_TRIGGER))
     
+    logging.debug("Recycling BOINC daemons")
+    
     if stopped:
         # try to start the daemons
-        logging.debug("BOINC daemon status: STOPPED")
-        logging.debug("Attempting to start BOINC daemons...")
-        os.system(os.path.join(project_path, "bin", "start"))
+        logging.debug("Current status: STOPPED")
     else:
-        logging.debug("BOINC daemon status: RUNNING")
+        logging.debug("Current status: RUNNING")
+        logging.debug("Attempting to stop BOINC daemons...")
+        os.system(os.path.join(project_path, "bin", "stop"))
+    logging.debug("Attempting to start BOINC daemons...")
+    os.system(os.path.join(project_path, "bin", "start"))
+    logging.debug("BOINC daemons recycle complete")
 
 def setup_config(task_path):
     """Adds appropriate daemons to the BOINC config.xml file.
