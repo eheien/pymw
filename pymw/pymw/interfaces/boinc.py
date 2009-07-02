@@ -200,11 +200,11 @@ class BOINCInterface:
                 shutil.copyfile(task._executable, exe_dest)
             while(not os.path.isfile(task._input_arg)):
                 logging.debug("Waiting for input to become ready...")
-            while(zip_file and not os.path.isfile(zip_file)):
+            while(zip_file and not os.path.isfile(task._data_file_zip)):
                 logging.debug("Waiting for zip to become ready...")
             
             shutil.copyfile(task._input_arg, in_dest)
-            shutil.copyfile(zip_file, in_zip)
+            shutil.copyfile(task._data_file_zip, in_zip)
                 
             # Create input XML template
             in_template = "pymw_in_" + str(task._task_name) + ".xml"
