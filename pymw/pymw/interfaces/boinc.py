@@ -181,9 +181,9 @@ class BOINCInterface:
             if zip_file:
                 cmd = "cd " + self._project_home + ";./bin/dir_hier_path " + zip_file
                 p = os.popen(cmd, "r")
-                try: in_zip = p.read().strip()
+                try: zip_dest = p.read().strip()
                 finally: p.close()
-                in_zip_dir = os.path.dirname(in_zip)
+                zip_dest_dir = os.path.dirname(zip_dest)
             
             cmd = "cd " + self._project_home + ";./bin/dir_hier_path " + task_exe
             p = os.popen(cmd, "r")
@@ -200,11 +200,9 @@ class BOINCInterface:
                 shutil.copyfile(task._executable, exe_dest)
             while(not os.path.isfile(task._input_arg)):
                 logging.debug("Waiting for input to become ready...")
-            while(zip_file and not os.path.isfile(task._data_file_zip)):
-                logging.debug("Waiting for zip to become ready...")
             
             shutil.copyfile(task._input_arg, in_dest)
-            shutil.copyfile(task._data_file_zip, in_zip)
+            shutil.copyfile(task._data_file_zip, zip_dest)
                 
             # Create input XML template
             in_template = "pymw_in_" + str(task._task_name) + ".xml"
@@ -216,7 +214,7 @@ class BOINCInterface:
             if zip_file:
                 boinc_in_template = boinc_in_template.replace("INPUT_ZIP_INFO", INPUT_ZIP_INFO)
                 boinc_in_template = boinc_in_template.replace("INPUT_ZIP_REF", INPUT_ZIP_REF)
-                boinc_in_template = boinc_in_template.replace("<PYMW_ZIP/>", in_zip)
+                boinc_in_template = boinc_in_template.replace("<PYMW_ZIP/>", zip_file)
             else:
                 boinc_in_template = boinc_in_template.replace("INPUT_ZIP_INFO", "")
                 boinc_in_template = boinc_in_template.replace("INPUT_ZIP_REF", "")
@@ -245,7 +243,7 @@ class BOINCInterface:
             cmd += " -wu_template templates/" +  in_template
             cmd += " -result_template templates/" + out_template
             cmd += " -batch " + self._batch_id 
-            cmd += " " + task_exe + " "  + in_file
+            cmd += " " + task_exe + " "  + in_file + " " + zip_file
             os.system(cmd)
         finally:
             # Release lock        
