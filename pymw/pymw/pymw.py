@@ -16,7 +16,9 @@ import errno
 import logging
 import inspect
 import signal
+import tempfile
 import textwrap
+import zipfile
 import interfaces.generic
 import interfaces.multicore
 import interfaces.mpi
@@ -114,7 +116,8 @@ class InterfaceException(Exception):
 class PyMW_Task:
     """Represents a task to be executed."""
     def __init__(self, task_name, executable, finished_queue, store_data_func, get_result_func,
-                 input_data=None, input_arg=None, output_arg=None, file_loc="tasks", file_input=False):
+                 input_data=None, input_arg=None, output_arg=None, file_loc="tasks",
+                 data_file_zip=None, file_input=False):
         self._finish_event = threading.Event()
         
         # Make sure executable is valid
@@ -129,6 +132,7 @@ class PyMW_Task:
         self._get_result_func = get_result_func
         self._store_data_func = store_data_func
         self._file_input = file_input
+        self._data_file_zip = data_file_zip
 
         # Set the input and output file locations
         if input_arg:
@@ -383,10 +387,12 @@ class PyMW_Master:
         self._finished_tasks = PyMW_List()
         
         self._delete_files = delete_files
-        self._task_dir_name = "tasks"
+        self._task_dir_name = os.getcwd() + "/tasks"
         self._cur_task_num = 0
         self._function_source = {}
-        self.pymw_interface_modules = "cPickle", "sys", "cStringIO"
+        self.pymw_interface_modules = "cPickle", "sys", "cStringIO", "zipfile"
+        self._data_file_zips = {}
+        self._module_zips = {}
 
         # Make the directory for input/output files, if it doesn't already exist
         try:
@@ -398,7 +404,7 @@ class PyMW_Master:
         atexit.register(self._cleanup, None, None)
         #signal.signal(signal.SIGKILL, self._cleanup)
     
-    def _setup_exec_file(self, file_name, main_func, modules, dep_funcs, file_input):
+    def _setup_exec_file(self, file_name, main_func, modules, dep_funcs, file_input, data_file_zip_name):
         """Sets up a script file for executing a function.  This file
         contains the function source, dependent functions, dependent
         modules and PyMW calls to get the input data and return the
@@ -423,7 +429,7 @@ class PyMW_Master:
         except AttributeError:
             all_funcs += (self.pymw_worker_func,)
         
-        # Get the source code for the necessary functions       
+        # Get the source code for the necessary functions
         func_hash = hash(all_funcs)
         if not self._function_source.has_key(func_hash):
             func_sources = [textwrap.dedent(inspect.getsource(func)) for func in all_funcs]
@@ -431,18 +437,52 @@ class PyMW_Master:
         else:
             return
 
+        # Create an archive of required modules
+        #self._archive_files(modules+interface_modules, True)
+
         func_data = self._function_source[func_hash]
         func_file = open(file_name, "w")
         # Create the necessary imports and function calls in the worker script
         for module_name in modules+interface_modules:
             func_file.write("import "+module_name+"\n")
         func_file.writelines(func_data[1])
-        run_options = []
-        if file_input: run_options.append("file_input")
-        func_file.write("_pymw_worker_manager("+func_data[0]+", "+str(run_options)+")\n")
+        run_options = {}
+        if file_input: run_options["file_input"] = True
+        run_options["arch_file"] = data_file_zip_name
+        func_file.write("_pymw_worker_manager("+func_data[0]+", "+repr(run_options)+")\n")
         func_file.close()
         
-    def submit_task(self, executable, input_data=None, modules=(), dep_funcs=(), external_files={}, input_from_file=False):
+    def _archive_files(self, data_files, is_modules=False):
+        if len(data_files) == 0: return None
+        
+        file_hash = hash(data_files)
+        if is_modules:
+            if self._module_zips.has_key(file_hash):
+                return self._module_zips[file_hash]
+        else:
+            if self._data_file_zips.has_key(file_hash):
+                return self._data_file_zips[file_hash]
+        
+        # TODO: this is insecure, try to use the arch_fd in creating the Zipfile object
+        if is_modules: arch_prefix = "modules_"
+        else: arch_prefix = "data_"
+        arch_fd, file_name = tempfile.mkstemp(suffix=".zip", prefix=arch_prefix, dir=self._task_dir_name)
+        os.close(arch_fd)
+        
+        archive_zip = zipfile.PyZipFile(file_name, mode="w")
+        for dfile in data_files:
+            ind_file_name = dfile.split("/")[-1]
+            if is_modules:
+                archive_zip.writepy(filename=dfile+".py", arcname=ind_file_name+".py")
+            else:
+                archive_zip.write(filename=dfile, arcname=ind_file_name)
+        archive_zip.close()
+        
+        self._data_file_zips[file_hash] = file_name
+        
+        return self._data_file_zips[file_hash]
+        
+    def submit_task(self, executable, input_data=None, modules=(), dep_funcs=(), data_files=(), input_from_file=False):
         """Creates and submits a task to the internal list for execution.
         Returns the created task for later use.
         executable can be either a filename (Python script) or a function."""
@@ -451,7 +491,6 @@ class PyMW_Master:
         if callable(executable):
             task_name = str(executable.func_name)+"_"+str(self._cur_task_num)
             exec_file_name = self._task_dir_name+"/"+str(executable.func_name)
-            self._setup_exec_file(exec_file_name, executable, modules, dep_funcs, input_from_file)
         elif isinstance(executable, str):
             # TODO: test here for existence of script
             task_name = str(executable)+"_"+str(self._cur_task_num)
@@ -460,6 +499,14 @@ class PyMW_Master:
             raise TaskException("Executable must be a filename or function")
         
         self._cur_task_num += 1
+        
+        # Create a zip archive containing the files of data_files
+        zip_arch_file = self._archive_files(data_files, False)
+        zip_arch_file_name = zip_arch_file.split("/")[-1]
+        
+        # Setup the necessary files
+        if callable(executable):
+            self._setup_exec_file(exec_file_name, executable, modules, dep_funcs, input_from_file, zip_arch_file_name)
         
         try:
             store_func = self._interface.pymw_master_write
@@ -471,7 +518,7 @@ class PyMW_Master:
         new_task = PyMW_Task(task_name=task_name, executable=exec_file_name,
                              store_data_func=store_func, get_result_func=get_result_func,
                              finished_queue=self._finished_tasks, input_data=input_data,
-                             file_loc=self._task_dir_name, #extra_files=external_files,
+                             file_loc=self._task_dir_name, data_file_zip=zip_arch_file,
                              file_input=input_from_file)
         
         self._submitted_tasks.append(new_task)
@@ -536,13 +583,24 @@ class PyMW_Master:
         for task in self._submitted_tasks:
             task.cleanup(self._delete_files)
         
-        for exec_file in self._function_source:
-            if self._delete_files:
+        if self._delete_files:
+            for exec_file in self._function_source:
                 try:
                     os.remove(self._function_source[exec_file][2])
                 except OSError:
                     pass
-            pass
+            
+            for hash_ind in self._data_file_zips:
+                try:
+                    os.remove(self._data_file_zips[hash_ind])
+                except OSError:
+                    pass
+            
+            for hash_ind in self._module_zips:
+                try:
+                    os.remove(self._module_zips[hash_ind])
+                except OSError:
+                    pass
         
         try:
             if self._delete_files:
@@ -586,6 +644,13 @@ class PyMW_Master:
             old_stderr = sys.stderr
             sys.stdout = cStringIO.StringIO()
             sys.stderr = cStringIO.StringIO()
+            # If there is a zip file, unzip the contents
+            if "arch_file" in options:
+                data_arch = zipfile.PyZipFile(options["arch_file"])
+                archive_files = data_arch.namelist()
+                for file_name in archive_files:
+                    data_arch.extract(file_name)
+                data_arch.close()
             # Call the worker function
             pymw_worker_func(func_name_to_call, options)
             # Get any stdout/stderr printed during the worker execution
@@ -596,6 +661,7 @@ class PyMW_Master:
             # Revert stdout/stderr to originals
             sys.stdout = old_stdout
             sys.stderr = old_stderr
+            # The interface is responsible for cleanup, so don't bother deleting the archive files
             # TODO: modify this to deal with other options (multiple results, etc)
             pymw_worker_write([_res_array[0], out_str, err_str], options)
         except Exception, e:
