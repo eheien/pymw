@@ -14,6 +14,7 @@ import errno
 import cPickle
 import cStringIO
 import tempfile
+import shutil
 
 """On worker restarting:
 Multicore systems cannot handle worker restarts - recording PIDs
