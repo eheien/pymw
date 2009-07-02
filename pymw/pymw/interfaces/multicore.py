@@ -13,6 +13,7 @@ import signal
 import errno
 import cPickle
 import cStringIO
+import tempfile
 
 """On worker restarting:
 Multicore systems cannot handle worker restarts - recording PIDs
@@ -23,6 +24,7 @@ delete the directory and start the task anew."""
 class Worker:
     def __init__(self):
         self._exec_process = None
+        self._worker_dir = tempfile.mkdtemp()
     
     def _kill(self):
         try:
@@ -33,6 +35,9 @@ class Worker:
                     os.kill(self._exec_process.pid, signal.SIGKILL)
         except:
             pass
+    
+    def _cleanup(self):
+        shutil.rmtree(self._worker_dir)
 
 class MulticoreInterface:
     """Provides a simple interface for single machine systems.
@@ -64,6 +69,9 @@ class MulticoreInterface:
         if sys.platform.startswith("win"): cf=0x08000000
         else: cf=0
         
+        # Copy any necessary files to the worker directory
+        if task._data_file_zip: shutil.copy(task._data_file_zip, worker._worker_dir)
+        
         # Pickle the input argument and remove it from the list
         input_obj_str = cPickle.dumps(self._input_objs[task._input_arg])
 
@@ -86,6 +94,7 @@ class MulticoreInterface:
     def _cleanup(self):
         for worker in self._worker_list:
             worker._kill()
+            worker._cleanup()
     
     def get_status(self):
         return {"num_total_workers" : self._num_workers,
