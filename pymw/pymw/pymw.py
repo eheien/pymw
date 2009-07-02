@@ -448,7 +448,7 @@ class PyMW_Master:
         func_file.writelines(func_data[1])
         run_options = {}
         if file_input: run_options["file_input"] = True
-        run_options["arch_file"] = data_file_zip_name
+        if data_file_zip_name: run_options["arch_file"] = data_file_zip_name
         func_file.write("_pymw_worker_manager("+func_data[0]+", "+repr(run_options)+")\n")
         func_file.close()
         
@@ -501,8 +501,12 @@ class PyMW_Master:
         self._cur_task_num += 1
         
         # Create a zip archive containing the files of data_files
-        zip_arch_file = self._archive_files(data_files, False)
-        zip_arch_file_name = zip_arch_file.split("/")[-1]
+        if len(data_files) > 0:
+            zip_arch_file = self._archive_files(data_files, False)
+            zip_arch_file_name = zip_arch_file.split("/")[-1]
+        else:
+            zip_arch_file = None
+            zip_arch_file_name = None
         
         # Setup the necessary files
         if callable(executable):
@@ -713,7 +717,7 @@ class PyMW_MapReduce:
         new_maintask = PyMW_Task(task_name=task_name, executable=task_name,
                                            store_data_func=store_func, get_result_func=get_result_func,
                                            finished_queue=self._master._finished_tasks, input_data=None,
-                                           file_loc=self._task_dir_name)
+                                           file_loc=self._task_dir_name, data_file_zip=None)
         
         self._master._submitted_tasks.append(new_maintask)
         #start mapreduce_thread 
