@@ -467,10 +467,10 @@ class PyMW_Master:
         # TODO: this is insecure, try to use the arch_fd in creating the Zipfile object
         if is_modules: arch_prefix = "modules_"
         else: arch_prefix = "data_"
-        arch_fd, file_name = tempfile.mkstemp(suffix=".zip", prefix=arch_prefix, dir=self._task_dir_name)
+        arch_fd, arch_file_name = tempfile.mkstemp(suffix=".zip", prefix=arch_prefix, dir=self._task_dir_name)
         os.close(arch_fd)
         
-        archive_zip = zipfile.PyZipFile(file_name, mode="w")
+        archive_zip = zipfile.PyZipFile(arch_file_name, mode="w")
         for dfile in data_files:
             ind_file_name = dfile.split("/")[-1]
             if is_modules:
@@ -482,9 +482,12 @@ class PyMW_Master:
                 archive_zip.write(filename=dfile, arcname=ind_file_name)
         archive_zip.close()
         
-        self._data_file_zips[file_hash] = file_name
-        
-        return self._data_file_zips[file_hash]
+        if is_modules:
+            self._module_zips[file_hash] = arch_file_name
+            return self._module_zips[file_hash]
+        else:
+            self._data_file_zips[file_hash] = arch_file_name
+            return self._data_file_zips[file_hash]
         
     def submit_task(self, executable, input_data=None, modules=(), dep_funcs=(), data_files=(), input_from_file=False):
         """Creates and submits a task to the internal list for execution.
