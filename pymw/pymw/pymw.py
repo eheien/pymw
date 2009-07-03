@@ -668,7 +668,10 @@ class PyMW_Master:
                 data_arch = zipfile.PyZipFile(options["arch_file"])
                 archive_files = data_arch.namelist()
                 for file_name in archive_files:
-                    data_arch.extract(file_name)
+                    compressed_file = data_arch.open(file_name)
+                    decompressed_file = open(file_name, "w")
+                    decompressed_file.write(compressed_file.read())
+                    decompressed_file.close()
                 data_arch.close()
             # Call the worker function
             pymw_worker_func(func_name_to_call, options)
