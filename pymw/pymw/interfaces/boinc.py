@@ -164,7 +164,10 @@ class BOINCInterface:
         in_file = os.path.basename(task._input_arg)
         out_file = os.path.basename(task._output_arg)
         task_exe = os.path.basename(task._executable)
-        zip_file = os.path.basename(task._data_file_zip)
+        if task._data_file_zip:
+            zip_file = os.path.basename(task._data_file_zip)
+        else:
+            zip_file = None
 
         # Block concurrent threads until changing directories
         lock.acquire()
@@ -177,6 +180,7 @@ class BOINCInterface:
             try: in_dest = p.read().strip()
             finally: p.close()
             in_dest_dir = os.path.dirname(in_dest)
+            if os.path.exists(in_dest): os.remove(in_dest)
             
             if zip_file:
                 cmd = "cd " + self._project_home + ";./bin/dir_hier_path " + zip_file
@@ -184,25 +188,24 @@ class BOINCInterface:
                 try: zip_dest = p.read().strip()
                 finally: p.close()
                 zip_dest_dir = os.path.dirname(zip_dest)
+                if os.path.exists(zip_dest): os.remove(zip_dest)
             
             cmd = "cd " + self._project_home + ";./bin/dir_hier_path " + task_exe
             p = os.popen(cmd, "r")
             try: exe_dest = p.read().strip()
             finally: p.close()
             exe_dest_dir = os.path.dirname(exe_dest)
+            if os.path.exists(exe_dest): os.remove(exe_dest)
             
             # Copy input files to download dir
-            if not os.path.isfile(exe_dest):
-                while(1):
-                    logging.debug("Waiting for task exe to become ready")
-                    if os.path.isfile(task._executable):
-                        break
-                shutil.copyfile(task._executable, exe_dest)
+            while(not os.path.isfile(task._executable)):
+                logging.debug("Waiting for task exe to become ready")
+            shutil.copyfile(task._executable, exe_dest)
+
             while(not os.path.isfile(task._input_arg)):
                 logging.debug("Waiting for input to become ready...")
-            
             shutil.copyfile(task._input_arg, in_dest)
-            shutil.copyfile(task._data_file_zip, zip_dest)
+            if zip_file: shutil.copyfile(task._data_file_zip, zip_dest)
                 
             # Create input XML template
             in_template = "pymw_in_" + str(task._task_name) + ".xml"
