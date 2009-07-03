@@ -117,7 +117,7 @@ class PyMW_Task:
     """Represents a task to be executed."""
     def __init__(self, task_name, executable, finished_queue, store_data_func, get_result_func,
                  input_data=None, input_arg=None, output_arg=None, file_loc="tasks",
-                 data_file_zip=None, file_input=False):
+                 data_file_zip=None, modules_file_zip=None, file_input=False):
         self._finish_event = threading.Event()
         
         # Make sure executable is valid
@@ -133,6 +133,7 @@ class PyMW_Task:
         self._store_data_func = store_data_func
         self._file_input = file_input
         self._data_file_zip = data_file_zip
+        self._modules_file_zip = modules_file_zip
 
         # Set the input and output file locations
         if input_arg:
@@ -438,7 +439,7 @@ class PyMW_Master:
             return
 
         # Create an archive of required modules
-        #self._archive_files(modules+interface_modules, True)
+        self._archive_files(modules, True)
 
         func_data = self._function_source[func_hash]
         func_file = open(file_name, "w")
@@ -473,7 +474,10 @@ class PyMW_Master:
         for dfile in data_files:
             ind_file_name = dfile.split("/")[-1]
             if is_modules:
-                archive_zip.writepy(filename=dfile+".py", arcname=ind_file_name+".py")
+                try:
+                    archive_zip.writepy(pathname=dfile+".py")
+                except IOError:
+                    logging.info("Couldn't find file for module "+dfile)
             else:
                 archive_zip.write(filename=dfile, arcname=ind_file_name)
         archive_zip.close()
@@ -508,6 +512,14 @@ class PyMW_Master:
             zip_arch_file = None
             zip_arch_file_name = None
         
+        # Create a zip archive containing the modules
+        if len(data_files) > 0:
+            mod_arch_file = self._archive_files(modules, True)
+            mod_arch_file_name = zip_arch_file.split("/")[-1]
+        else:
+            mod_arch_file = None
+            mod_arch_file_name = None
+        
         # Setup the necessary files
         if callable(executable):
             self._setup_exec_file(exec_file_name, executable, modules, dep_funcs, input_from_file, zip_arch_file_name)
@@ -523,7 +535,7 @@ class PyMW_Master:
                              store_data_func=store_func, get_result_func=get_result_func,
                              finished_queue=self._finished_tasks, input_data=input_data,
                              file_loc=self._task_dir_name, data_file_zip=zip_arch_file,
-                             file_input=input_from_file)
+                             modules_file_zip=mod_arch_file, file_input=input_from_file)
         
         self._submitted_tasks.append(new_task)
         self._queued_tasks.append(item=new_task)
@@ -717,7 +729,7 @@ class PyMW_MapReduce:
         new_maintask = PyMW_Task(task_name=task_name, executable=task_name,
                                            store_data_func=store_func, get_result_func=get_result_func,
                                            finished_queue=self._master._finished_tasks, input_data=None,
-                                           file_loc=self._task_dir_name, data_file_zip=None)
+                                           file_loc=self._task_dir_name)
         
         self._master._submitted_tasks.append(new_maintask)
         #start mapreduce_thread 

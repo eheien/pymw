@@ -4,6 +4,10 @@ import sys
 import threading
 import os
 import signal
+import tempfile
+
+# TODO: add test for sending archives of files
+# TODO: add test for sending modules
 
 # Null function to test standard operation
 def null_worker(in_data):
@@ -25,6 +29,16 @@ def square(list1):
 
 def plus(list2):
     return sum(list2)
+
+def check_files(file_list):
+    for fname in file_list:
+        fp = open(fname, "r")
+        data = fp.readlines()
+        fp.close()
+        if data[0].count("booga") == 0:
+            return False
+    
+    return True
 
 def killAll():
     print
@@ -165,6 +179,24 @@ class TestPyMW(unittest.TestCase):
         task_MR = pymw_mapreduce.submit_task_mapreduce(square, plus, num_tasks, input_data=range(1,21), modules=(), dep_funcs=())
         my_task, result = self.pymw_master.get_result(task_MR)
         self.assert_(sum(result) == actual_total)
+        
+    def testSendFiles(self):
+        """Test the packaging and sending of auxiliary data files."""
+        num_files = 10
+        file_list = [tempfile.mkstemp() for i in range(num_files)]
+        
+        name_list = []
+        path_list = tuple([file[1] for file in file_list])
+        for file in file_list:
+            os.write(file[0], "booga")
+            os.close(file[0])
+            name_list.append(file[1].split("/")[-1])
+        
+        task = self.pymw_master.submit_task(check_files, input_data=(name_list,), data_files=path_list)
+        my_task, res = self.pymw_master.get_result(task)
+        for file in file_list: os.remove(file[1])
+        
+        self.assert_(res)
         
     def testStandardOperation(self):
         """Test standard operation with null worker program"""
