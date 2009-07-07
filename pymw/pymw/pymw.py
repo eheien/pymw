@@ -665,12 +665,11 @@ class PyMW_Master:
             sys.stderr = cStringIO.StringIO()
             # If there is a zip file, unzip the contents
             if "arch_file" in options:
-                data_arch = zipfile.PyZipFile(options["arch_file"])
+                data_arch = zipfile.PyZipFile(file=options["arch_file"], mode='r')
                 archive_files = data_arch.namelist()
                 for file_name in archive_files:
-                    compressed_file = data_arch.open(file_name)
                     decompressed_file = open(file_name, "w")
-                    decompressed_file.write(compressed_file.read())
+                    decompressed_file.write(data_arch.read(file_name))
                     decompressed_file.close()
                 data_arch.close()
             # Call the worker function
