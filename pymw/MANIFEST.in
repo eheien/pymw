@@ -4,6 +4,5 @@ include examples/null_test.py
 include examples/worker_sim.py
 include README
 include COPYING
-include pymw/interfaces/assimilator*
 include pymw/interfaces/pymw_*
-
+#include pymw/interfaces/pywm_run.exe

@@ -65,10 +65,21 @@ def get_winworker_path():
     *expected* path and may not actually exist.
     """
     paths = [p for p in sys.path[1:] if 'pymw' in p]
-    if len(paths) == 0: return None
-    path = os.path.join(paths[0], WINDOWS_WORKER)
-    
-    return path
+    if len(paths) > 0: 
+    	path = os.path.join(paths[0], WINDOWS_WORKER)
+        return path
+
+    paths = [p for p in sys.path[1:] if 'site-packages' in p]
+    if len(paths) > 0:
+	for p in paths:
+	    print "found site-packages", p
+	    path = os.path.join(p, WINDOWS_WORKER)
+	    print path
+	    if os.path.exists(path):
+	        return path
+
+    return None
+ 
 
 def install_pymw(project_path):
     """Installs a default app named "pymw" into BOINC and
@@ -179,8 +190,9 @@ def install_apps(config):
     # Call update_versions
     project_home = config.config.app_dir.rpartition('/')[0]
     
-    os.system("cd %s; xadd" % project_home)
-    os.system("cd %s; update_versions --force --sign" % project_home)
+    b = project_home #os.path.join(project_home, "bin")
+    os.system("cd %s; ./bin/xadd" % b)
+    os.system("cd %s; ./bin/update_versions --force --sign" % b)
 
 def file_exists(path, name, data=None):
     """Checks to see if a file exists, if so, prints a message if
@@ -215,7 +227,7 @@ def install_windows(app_dir, app_name):
     workerpath = get_winworker_path()
     if not workerpath or not os.path.exists(workerpath): 
         logging.critical("Unable to locate the windows worker executable, windows clients will be disabled")
-        logging.critical("The path returned was: " + workerpath)
+        if workerpath: logging.critical("The path returned was: " + workerpath)
         return
     
     if not os.path.exists(win_dir):os.mkdir(win_dir)

@@ -15,4 +15,5 @@ setup(name='pymw',
       platforms=["any"],
       packages=['pymw', 'pymw.interfaces'],
       package_dir={'pymw': 'pymw'},
+      package_data={'pymw': ['interfaces/pymw_run.exe',] },
      )
