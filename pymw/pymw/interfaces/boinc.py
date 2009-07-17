@@ -55,7 +55,7 @@ OUTPUT_TEMPLATE = """\
     <name><OUTFILE_0/></name>
     <generated_locally/>
     <upload_when_present/>
-    <max_nbytes>32768</max_nbytes>
+    <max_nbytes>65536</max_nbytes>
     <url><UPLOAD_URL/></url>
 </file_info>
 <result>
@@ -246,7 +246,10 @@ class BOINCInterface:
             cmd += " -wu_template templates/" +  in_template
             cmd += " -result_template templates/" + out_template
             cmd += " -batch " + self._batch_id 
-            cmd += " " + task_exe + " "  + in_file + " " + zip_file
+            cmd += " " + task_exe + " "  + in_file
+            if zip_file:
+                cmd += " " + zip_file
+            
             os.system(cmd)
         finally:
             # Release lock        
