@@ -211,18 +211,27 @@ class BOINCInterface:
             in_template = "pymw_in_" + str(task._task_name) + ".xml"
             dest = self._project_templates + in_template
             boinc_in_template = self._boinc_in_template
-            boinc_in_template = boinc_in_template.replace("<PYMW_EXECUTABLE/>", task_exe)
+            boinc_in_template = boinc_in_template.replace("<PYMW_EXECUTABLE/>", \
+                                                          task_exe + ".py")
             boinc_in_template = boinc_in_template.replace("<PYMW_INPUT/>", in_file)
             
             if zip_file:
-                boinc_in_template = boinc_in_template.replace("INPUT_ZIP_INFO", INPUT_ZIP_INFO)
-                boinc_in_template = boinc_in_template.replace("INPUT_ZIP_REF", INPUT_ZIP_REF)
-                boinc_in_template = boinc_in_template.replace("<PYMW_ZIP/>", zip_file)
+                boinc_in_template = boinc_in_template.replace("INPUT_ZIP_INFO", \
+                                                              INPUT_ZIP_INFO)
+                boinc_in_template = boinc_in_template.replace("INPUT_ZIP_REF", \
+                                                              INPUT_ZIP_REF)
+                boinc_in_template = boinc_in_template.replace("<PYMW_ZIP/>", \
+                                                              zip_file)
             else:
-                boinc_in_template = boinc_in_template.replace("INPUT_ZIP_INFO", "")
-                boinc_in_template = boinc_in_template.replace("INPUT_ZIP_REF", "")
+                boinc_in_template = boinc_in_template.replace("INPUT_ZIP_INFO", \
+                                                              "")
+                boinc_in_template = boinc_in_template.replace("INPUT_ZIP_REF", \
+                                                              "")
             
-            boinc_in_template = boinc_in_template.replace("<PYMW_CMDLINE/>", task_exe + " " + in_file + " " + out_file)
+            boinc_in_template = boinc_in_template.replace("<PYMW_CMDLINE/>", \
+                                                          task_exe + ".py " + \
+                                                          in_file + " " + \
+                                                          out_file)
             logging.debug("writing in xml template: %s" % dest)
             
             f = open(dest, "w")
@@ -233,7 +242,8 @@ class BOINCInterface:
             out_template = "pymw_out_" + str(task._task_name) + ".xml"
             dest = self._project_templates + out_template
             boinc_out_template = self._boinc_out_template
-            boinc_out_template = boinc_out_template.replace("<PYMW_OUTPUT/>", out_file)
+            boinc_out_template = boinc_out_template.replace("<PYMW_OUTPUT/>", \
+                                                            out_file)
             logging.debug("writing out xml template: %s" % dest)
             
             f = open(dest, "w")
@@ -242,7 +252,8 @@ class BOINCInterface:
             
             # Call create_work
             cmd =  "cd " + self._project_home 
-            cmd += "; ./bin/create_work -appname pymw -wu_name pymw_" +  str(task._task_name) + "_b" + self._batch_id
+            cmd += "; ./bin/create_work -appname pymw -wu_name pymw_" + \
+                   str(task._task_name) + "_b" + self._batch_id
             cmd += " -wu_template templates/" +  in_template
             cmd += " -result_template templates/" + out_template
             cmd += " -batch " + self._batch_id 

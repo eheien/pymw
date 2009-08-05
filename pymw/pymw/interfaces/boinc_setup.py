@@ -12,9 +12,9 @@ import os, logging, sys, stat, shutil
 
 
 # Platform strings, must adhere to BOINC main program naming spec
-i686_pc_linux_gnu = "pymw_1.01_i686-pc-linux-gnu"
-windows_intelx86  = "pymw_1.01_windows_intelx86.exe"
-i686_apple_darwin = "pymw_1.01_i686-apple-darwin"
+LINUX_APP_NAME = "pymw_1.01_i686-pc-linux-gnu"
+WIN_APP_NAME  = "pymw_1.01_windows_intelx86.exe"
+APPLE_APP_NAME = "pymw_1.01_i686-apple-darwin"
 
 # Worker script (the main BOINC program)
 POSIX_WORKER = """\
@@ -34,7 +34,7 @@ FILE_REF = """\
 # indicates that the daemons are stopped or stopping 
 STOP_TRIGGER = "stop_daemons"
 
-configxml,projectxml = None,None
+configxml, projectxml = None, None
 def boinc_import_hack(proj_path):
     """Imports the BOINC support code
 
@@ -43,7 +43,9 @@ def boinc_import_hack(proj_path):
     around that issue by creating global vars for the namespaces
     and then populating them once the path is known.
     """
-    global configxml,projectxml
+    global configxml, projectxml
+    if configxml != None or projectxml != None:
+        return
     
     bin_path = os.path.join(proj_path, "py")
     if not bin_path in sys.path:
@@ -52,7 +54,7 @@ def boinc_import_hack(proj_path):
     # BOINC will search for config files using these vars
     os.environ['BOINC_PROJECT_DIR'] = proj_path
     
-    from Boinc import configxml,projectxml
+    from Boinc import configxml, projectxml
 
 def get_winworker_path():
     """Gets the path to the WINDOWS_WORKER
@@ -66,17 +68,17 @@ def get_winworker_path():
     """
     paths = [p for p in sys.path[1:] if 'pymw' in p]
     if len(paths) > 0: 
-    	path = os.path.join(paths[0], WINDOWS_WORKER)
+        path = os.path.join(paths[0], WINDOWS_WORKER)
         return path
 
     paths = [p for p in sys.path[1:] if 'site-packages' in p]
     if len(paths) > 0:
-	for p in paths:
-	    print "found site-packages", p
-	    path = os.path.join(p, WINDOWS_WORKER)
-	    print path
-	    if os.path.exists(path):
-	        return path
+        for cur_path in paths:
+            print "found site-packages", cur_path
+            path = os.path.join(cur_path, WINDOWS_WORKER)
+            print path
+            if os.path.exists(path):
+                return path
 
     return None
  
@@ -96,7 +98,7 @@ def install_pymw(project_path):
     boinc_import_hack(project_path)
 
     config = setup_config(os.path.join(sys.path[0], "tasks"))
-    project = setup_project()
+    setup_project()
     install_apps(config)
     check_daemons(project_path)
     
@@ -150,6 +152,11 @@ def setup_config(task_path):
     return config
 
 def add_daemon(config, command, remove):
+    """Adds a Daemon to the given configuration
+    
+    If a daemon is found starting with the "remove" parameter that daemon is
+    removed from the configuration before adding the given command.
+    """
     # first try to remove it
     for daemon in [d for d in config.daemons if d.cmd.startswith(remove)]:
         config.daemons.remove_node(daemon)
@@ -161,38 +168,42 @@ def add_daemon(config, command, remove):
     config.write()
     
 def setup_project():
+    """Adds the PyMW application to the project xml file
+    """
     # Append new instance of pymw worker to project.xml
     project = projectxml.ProjectFile().read()
-    found = False
     for element in project.elements:
         if element.name == 'pymw':
-            logging.info("PyMW client application is already present in project.xml")
+            logging.info("PyMW client application is already present in " + \
+                         "project.xml")
             return
     
     project.elements.make_node_and_append("app").name = "pymw"
     project.write()
     for element in project.elements:
         if element.name == "pymw":
-            element.user_friendly_name = "PyMW - Master Worker Computing in Python"
+            element.user_friendly_name = "PyMW - Master Worker " + \
+                                         "Computing in Python"
             project.write()
     return project
 
 def install_apps(config):
+    """Installs and registers the worker applications into ths apps directory 
+    """
     # Install worker applications
     app_dir = os.path.join(config.config.app_dir, "pymw")
     if not os.path.isdir(app_dir):
         os.mkdir(app_dir)
     
-    install_posix(app_dir, i686_pc_linux_gnu, POSIX_WORKER, "Linux")
-    install_posix(app_dir, i686_apple_darwin, POSIX_WORKER, "Apple")
-    install_windows(app_dir, windows_intelx86)
+    install_posix(app_dir, LINUX_APP_NAME, POSIX_WORKER, "Linux")
+    install_posix(app_dir, APPLE_APP_NAME, POSIX_WORKER, "Apple")
+    install_windows(app_dir)
     
     # Call update_versions
     project_home = config.config.app_dir.rpartition('/')[0]
     
-    b = project_home #os.path.join(project_home, "bin")
-    os.system("cd %s; ./bin/xadd" % b)
-    os.system("cd %s; ./bin/update_versions --force --sign" % b)
+    os.system("cd %s; ./bin/xadd" % project_home)
+    os.system("cd %s; ./bin/update_versions --force --sign" % project_home)
 
 def file_exists(path, name, data=None):
     """Checks to see if a file exists, if so, prints a message if
@@ -206,13 +217,17 @@ def file_exists(path, name, data=None):
         if name != None:
             logging.debug("%s already installed, skipping file")
         return True
-    if data == None: return False
-    f = open(path, "w")
-    try: f.writelines(data)
-    finally: f.close()
+    if data == None:
+        return False
+    path_file = open(path, "w")
+    try:
+        path_file.writelines(data)
+    finally:
+        path_file.close()
+        
     return False
   
-def install_windows(app_dir, app_name):
+def install_windows(app_dir):
     """Installs the windows application by copying:
      - [Windows-worker].exe
      - [Windows-worker].exe.file_ref_info
@@ -220,17 +235,20 @@ def install_windows(app_dir, app_name):
     """
     # windows_intelx86
     logging.info("setting up client application for Windows platform")
-    win_dir = os.path.join(app_dir, windows_intelx86)
-    win_exe = os.path.join(win_dir, windows_intelx86)
-    win_exe_ref = os.path.join(win_dir, windows_intelx86 + ".file_ref_info")
+    win_dir = os.path.join(app_dir, WIN_APP_NAME)
+    win_exe = os.path.join(win_dir, WIN_APP_NAME)
+    win_exe_ref = os.path.join(win_dir, WIN_APP_NAME + ".file_ref_info")
     
     workerpath = get_winworker_path()
     if not workerpath or not os.path.exists(workerpath): 
-        logging.critical("Unable to locate the windows worker executable, windows clients will be disabled")
-        if workerpath: logging.critical("The path returned was: " + workerpath)
+        logging.critical("Unable to locate the windows worker executable, " + \
+                         "windows clients will be disabled")
+        if workerpath:
+            logging.critical("The path returned was: " + workerpath)
         return
     
-    if not os.path.exists(win_dir):os.mkdir(win_dir)
+    if not os.path.exists(win_dir):
+        os.mkdir(win_dir)
     if not file_exists(win_exe, "Windows main-app"):
         shutil.copy(workerpath, win_exe)
     
@@ -245,15 +263,18 @@ def install_posix(app_dir, app_name, worker, friendly_name):
      - the-script.file_ref_info
     into the apps directory of the BOINC project. 
     """
-    logging.info("setting up client application for " + friendly_name + " platform")
+    logging.info("setting up client application for " + friendly_name + \
+                 " platform")
     target_dir = os.path.join(app_dir, app_name)
     target_exe = os.path.join(target_dir, app_name)
     target_exe_ref = os.path.join(target_dir, app_name + ".file_ref_info")
 
-    if not os.path.exists(target_dir): os.mkdir(target_dir)
+    if not os.path.exists(target_dir):
+        os.mkdir(target_dir)
     file_exists(target_exe, friendly_name, worker)
     file_exists(target_exe_ref, None, FILE_REF)
 
     os.chmod(target_exe, stat.S_IRWXU | stat.S_IRGRP | stat.S_IROTH)
-    logging.info("client application for " + friendly_name + " platform set up successfully")     
+    logging.info("client application for " + friendly_name + \
+                 " platform set up successfully")     
 
