@@ -12,9 +12,12 @@ import os, logging, sys, stat, shutil
 
 
 # Platform strings, must adhere to BOINC main program naming spec
-LINUX_APP_NAME = "pymw_1.01_i686-pc-linux-gnu"
-WIN_APP_NAME  = "pymw_1.01_windows_intelx86.exe"
-APPLE_APP_NAME = "pymw_1.01_i686-apple-darwin"
+LINUX_APP_NAME = "pymw_1.03_i686-pc-linux-gnu"
+WIN_APP_NAME  = "pymw_1.03_windows_intelx86.exe"
+APPLE_APP_NAME = "pymw_1.03_i686-apple-darwin"
+PYMW_APP_NAMES = [LINUX_APP_NAME,
+                  WIN_APP_NAME,
+                  APPLE_APP_NAME,]
 
 # Worker script (the main BOINC program)
 POSIX_WORKER = """\
@@ -83,7 +86,7 @@ def get_winworker_path():
     return None
  
 
-def install_pymw(project_path):
+def install_pymw(project_path, custom_app_dir=None):
     """Installs a default app named "pymw" into BOINC and
     sets up the assimilator to look in the current directory
     to pick up workunits. In addition to setting up the 
@@ -99,7 +102,9 @@ def install_pymw(project_path):
 
     config = setup_config(os.path.join(sys.path[0], "tasks"))
     setup_project()
-    install_apps(config)
+    
+    install_apps(config, custom_app_dir)
+    
     check_daemons(project_path)
     
     logging.debug("---------------------")
@@ -187,7 +192,7 @@ def setup_project():
             project.write()
     return project
 
-def install_apps(config):
+def install_apps(config, custom_app_dir=None):
     """Installs and registers the worker applications into ths apps directory 
     """
     # Install worker applications
@@ -195,9 +200,14 @@ def install_apps(config):
     if not os.path.isdir(app_dir):
         os.mkdir(app_dir)
     
-    install_posix(app_dir, LINUX_APP_NAME, POSIX_WORKER, "Linux")
-    install_posix(app_dir, APPLE_APP_NAME, POSIX_WORKER, "Apple")
-    install_windows(app_dir)
+    if custom_app_dir:
+        install_custom_app(app_dir, custom_app_dir, LINUX_APP_NAME, "Linux")
+        install_custom_app(app_dir, custom_app_dir, APPLE_APP_NAME, "Apple")
+        install_custom_app(app_dir, custom_app_dir, WIN_APP_NAME, "Windows")
+    else:
+        install_posix(app_dir, LINUX_APP_NAME, POSIX_WORKER, "Linux")
+        install_posix(app_dir, APPLE_APP_NAME, POSIX_WORKER, "Apple")
+        install_windows(app_dir)
     
     # Call update_versions
     project_home = config.config.app_dir.rpartition('/')[0]
@@ -226,7 +236,49 @@ def file_exists(path, name, data=None):
         path_file.close()
         
     return False
-  
+
+def install_custom_app(app_dir, custom_app_dir, app_name, app_platform):
+    """Installs a custom application as the worker
+    
+    Note that this function assumes that the custom_app_dir is setup exactly
+    as BOINC needs it, with .file_ref_info files already in place and
+    executables named according to what PyMW needs to run.
+    """
+    logging.info("setting up client application for " + app_platform + \
+                 " platform")
+    target_dir = os.path.join(app_dir, app_name)
+
+    if not os.path.exists(target_dir):
+        os.mkdir(target_dir)
+    
+    source_dir = os.path.join(custom_app_dir, app_platform.lower())
+    found = False
+
+    for src_file in os.listdir(source_dir):
+        if src_file == app_name:
+            found = True
+            break
+       
+    if not found:
+        raise RuntimeError("The specified required name was not found \n" + \
+                           "app_name: " + app_name + "\n" \
+                           "source_dir: " + source_dir + "\n" \
+                           "app_platform: " + app_platform + "\n")
+
+    for src_file in os.listdir(source_dir):
+        dest_path = os.path.join(target_dir, src_file)
+        source_path = os.path.join(source_dir, src_file)
+        if os.path.isdir(source_path):
+            continue
+        if file_exists(src_file, src_file):
+            continue
+        shutil.copy2(source_path, dest_path)
+        #os.chmod(dest_path, stat.S_IRWXU | stat.S_IRGRP | stat.S_IROTH)
+    
+    logging.info("client application for " + app_platform + \
+                 " platform set up successfully")     
+
+
 def install_windows(app_dir):
     """Installs the windows application by copying:
      - [Windows-worker].exe

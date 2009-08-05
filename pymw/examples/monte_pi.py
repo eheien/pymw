@@ -25,6 +25,8 @@ parser.add_option("-i", "--interface", dest="interface", default="generic", help
 parser.add_option("-n", "--num_workers", dest="n_workers", default="4", help="number of workers", metavar="N")
 parser.add_option("-t", "--num_tests", dest="n_tests", default="1000000", help="number of Monte Carlo tests to perform", metavar="N")
 parser.add_option("-p", "--project_home", dest="p_home", default="", help="directory of the project (BOINC interface)", metavar="DIR")
+parser.add_option("-c", "--app_path", dest="custom_app_dir", default="", help="directory of a custom worker application (BOINC interface)", metavar="DIR")
+parser.add_option("-a", "--app_args", dest="custom_app_args", default="", help="arguments for a custom worker application (BOINC interface)", metavar="DIR")
 options, args = parser.parse_args()
 
 n_workers, n_tests = int(options.n_workers), int(options.n_tests)
@@ -40,7 +42,9 @@ elif options.interface == "mpi":
 elif options.interface == "condor":
     interface_obj = pymw.interfaces.condor.CondorInterface()
 elif options.interface == "boinc":
-    interface_obj = pymw.interfaces.boinc.BOINCInterface(project_home=options.p_home)
+    interface_obj = pymw.interfaces.boinc.BOINCInterface(project_home=options.p_home,\
+                                                         custom_app_dir=options.custom_app_dir,\
+                                                         custom_args=[options.custom_app_args])
 else:
     print "Interface", options.interface, "unknown."
     exit()

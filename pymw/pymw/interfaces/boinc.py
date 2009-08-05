@@ -70,8 +70,9 @@ OUTPUT_TEMPLATE = """\
 lock = threading.Lock()
 
 class BOINCInterface:
-    def __init__(self, project_home):
+    def __init__(self, project_home, custom_app_dir=None, custom_args=[]):
         self._project_home = project_home
+        self._custom_args = custom_args
         self._project_download = project_home + "/download/"
         self._project_templates = project_home + "/templates/"
         self._boinc_in_template = INPUT_TEMPLATE
@@ -86,7 +87,7 @@ class BOINCInterface:
         self._task_finish_thread = None
         
         # auto-magical BOINC installation script
-        boinc_setup.install_pymw(project_home)
+        boinc_setup.install_pymw(project_home, custom_app_dir)
 
     def _get_unix_timestamp(self):
         return calendar.timegm(time.gmtime())
@@ -220,7 +221,7 @@ class BOINCInterface:
             dest = self._project_templates + in_template
             boinc_in_template = self._boinc_in_template
             boinc_in_template = boinc_in_template.replace("<PYMW_EXECUTABLE/>"\
-                                                          , task_exe + ".py")
+                                                          , task_exe)
             boinc_in_template = boinc_in_template.replace("<PYMW_INPUT/>",\
                                                           in_file)
             
@@ -237,8 +238,13 @@ class BOINCInterface:
                 boinc_in_template = boinc_in_template.replace("INPUT_ZIP_REF", \
                                                               "")
             
+            if self._custom_args:
+                cust_args = " " + " ".join(self._custom_args) + " "
+            else:
+                cust_args = ""
             boinc_in_template = boinc_in_template.replace("<PYMW_CMDLINE/>", \
-                                                          task_exe + ".py " + \
+                                                          task_exe + \
+                                                          cust_args + \
                                                           in_file + " " + \
                                                           out_file)
             logging.debug("writing in xml template: %s" % dest)
@@ -266,7 +272,7 @@ class BOINCInterface:
             cmd += " -wu_template templates/" +  in_template
             cmd += " -result_template templates/" + out_template
             cmd += " -batch " + self._batch_id 
-            cmd += " " + task_exe + " "  + in_file
+            cmd += " " + task_exe + " " + in_file
             if zip_file:
                 cmd += " " + zip_file
             
