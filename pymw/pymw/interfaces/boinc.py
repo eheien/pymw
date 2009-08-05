@@ -2,8 +2,8 @@
 """Provide a BOINC interface for master worker computing with PyMW.
 """
 
-import threading,shutil,os,sys,re
-import time,calendar
+import threading, shutil, os, sys, re
+import time, calendar
 import logging
 import boinc_setup
 
@@ -68,7 +68,6 @@ OUTPUT_TEMPLATE = """\
 """
 
 lock = threading.Lock()
-#logging.basicConfig(level=logging.DEBUG, format="%(asctime)s %(levelname)s %(message)s")
 
 class BOINCInterface:
     def __init__(self, project_home):
@@ -117,7 +116,10 @@ class BOINCInterface:
                             try: error_message = "".join(f.readlines())
                             finally: f.close()
                             os.remove(out_file + ".error")
-                            task.task_finished(task_err=Exception("BOINC computation failed:\n " + error_message))
+                            task.task_finished(task_err=\
+                                               Exception("BOINC computation"\
+                                                         + " failed:\n " + \
+                                                         error_message))
                             self._task_list.remove(entry)
                     if len(self._task_list) == 0:
                         self._result_checker_running = False
@@ -125,7 +127,8 @@ class BOINCInterface:
                 except Exception,data:
                     # just in case a higher-level process is hiding exceptions
                     # log any exception that occures and then re-raise it
-                    logging.critical("BOINCInterface._get_finished_tasks failed: %s" % data)
+                    logging.critical("BOINCInterface._get_finished_tasks" + \
+                                     " failed: %s" % data)
                     self._result_checker_running = False
                     raise
             finally:
@@ -147,7 +150,8 @@ class BOINCInterface:
         
         if not self._result_checker_running:
             self._result_checker_running = True
-            self._task_finish_thread = threading.Thread(target=self._get_finished_tasks)
+            self._task_finish_thread = threading.Thread(target=\
+                                                    self._get_finished_tasks)
             self._task_finish_thread.start()
 
     def _project_path_exists(self):
@@ -173,9 +177,11 @@ class BOINCInterface:
         lock.acquire()
         try:
             logging.debug("Locking thread")
-            logging.debug("input: %s, output: %s, task: %s" % (in_file, out_file, task_exe,))
+            logging.debug("input: %s, output: %s, task: %s" \
+                          % (in_file, out_file, task_exe,))
             
-            cmd = "cd " + self._project_home + ";./bin/dir_hier_path " + in_file
+            cmd = "cd " + self._project_home
+            cmd += ";./bin/dir_hier_path " + in_file
             p = os.popen(cmd, "r")
             try: in_dest = p.read().strip()
             finally: p.close()
@@ -183,14 +189,16 @@ class BOINCInterface:
             if os.path.exists(in_dest): os.remove(in_dest)
             
             if zip_file:
-                cmd = "cd " + self._project_home + ";./bin/dir_hier_path " + zip_file
+                cmd = "cd " + self._project_home
+                cmd += ";./bin/dir_hier_path " + zip_file
                 p = os.popen(cmd, "r")
                 try: zip_dest = p.read().strip()
                 finally: p.close()
                 zip_dest_dir = os.path.dirname(zip_dest)
                 if os.path.exists(zip_dest): os.remove(zip_dest)
             
-            cmd = "cd " + self._project_home + ";./bin/dir_hier_path " + task_exe
+            cmd = "cd " + self._project_home
+            cmd += ";./bin/dir_hier_path " + task_exe
             p = os.popen(cmd, "r")
             try: exe_dest = p.read().strip()
             finally: p.close()
@@ -211,20 +219,21 @@ class BOINCInterface:
             in_template = "pymw_in_" + str(task._task_name) + ".xml"
             dest = self._project_templates + in_template
             boinc_in_template = self._boinc_in_template
-            boinc_in_template = boinc_in_template.replace("<PYMW_EXECUTABLE/>", \
-                                                          task_exe + ".py")
-            boinc_in_template = boinc_in_template.replace("<PYMW_INPUT/>", in_file)
+            boinc_in_template = boinc_in_template.replace("<PYMW_EXECUTABLE/>"\
+                                                          , task_exe + ".py")
+            boinc_in_template = boinc_in_template.replace("<PYMW_INPUT/>",\
+                                                          in_file)
             
             if zip_file:
-                boinc_in_template = boinc_in_template.replace("INPUT_ZIP_INFO", \
-                                                              INPUT_ZIP_INFO)
+                boinc_in_template = boinc_in_template.replace("INPUT_ZIP_INFO"\
+                                                              , INPUT_ZIP_INFO)
                 boinc_in_template = boinc_in_template.replace("INPUT_ZIP_REF", \
                                                               INPUT_ZIP_REF)
                 boinc_in_template = boinc_in_template.replace("<PYMW_ZIP/>", \
                                                               zip_file)
             else:
-                boinc_in_template = boinc_in_template.replace("INPUT_ZIP_INFO", \
-                                                              "")
+                boinc_in_template = boinc_in_template.replace("INPUT_ZIP_INFO"\
+                                                              , "")
                 boinc_in_template = boinc_in_template.replace("INPUT_ZIP_REF", \
                                                               "")
             
@@ -282,7 +291,8 @@ class BOINCInterface:
             logging.critical("Unable to cleanup batch: " + self._batch_id)
             return None
 
-        logging.debug("Zeroing batch in BOINC db where batch = " + self._batch_id)
+        logging.debug("Zeroing batch in BOINC db where batch = " \
+                      + self._batch_id)
         mgr = Manager(self._project_home)
         mgr.zero_batch(self._batch_id)
         
@@ -333,7 +343,8 @@ class Manager():
         return os.system(os.path.join(self.project_path, "bin", boinc_app_name))
     
     def is_running(self):
-        return not os.path.exists(os.path.join(self.project_path, self.STOP_TRIGGER))
+        return not os.path.exists(os.path.join(self.project_path, \
+                                               self.STOP_TRIGGER))
     
     def zero_batch(self, batch_id, cancel_workunits=False):
         self.Boinc.database.connect()
