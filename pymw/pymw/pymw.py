@@ -497,11 +497,11 @@ class PyMW_Master:
         # Check if the executable is a Python function or a script
         if callable(executable):
             task_name = str(executable.func_name)+"_"+str(self._cur_task_num)
-            exec_file_name = self._task_dir_name+"/"+str(executable.func_name)
+            exec_file_name = self._task_dir_name+"/"+str(executable.func_name)+".py"
         elif isinstance(executable, str):
             # TODO: test here for existence of script
             task_name = str(executable)+"_"+str(self._cur_task_num)
-            exec_file_name = executable
+            exec_file_name = executable+".py"
         else:
             raise TaskException("Executable must be a filename or function")
         
@@ -668,7 +668,7 @@ class PyMW_Master:
                 data_arch = zipfile.PyZipFile(file=options["arch_file"], mode='r')
                 archive_files = data_arch.namelist()
                 for file_name in archive_files:
-                    decompressed_file = open(file_name, "w")
+                    decompressed_file = open(file_name, "wb")
                     decompressed_file.write(data_arch.read(file_name))
                     decompressed_file.close()
                 data_arch.close()
