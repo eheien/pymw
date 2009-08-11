@@ -45,7 +45,7 @@ INPUT_ZIP_INFO
     INPUT_ZIP_REF
     <command_line><PYMW_CMDLINE/></command_line>
     <min_quorum>1</min_quorum>
-    <target_nresults>1</target_nresults>
+    <target_nresults>2</target_nresults>
 </workunit>
 """
 
