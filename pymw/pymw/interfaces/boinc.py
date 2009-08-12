@@ -18,7 +18,7 @@ INPUT_ZIP_INFO = """<file_info>
 
 INPUT_ZIP_REF = """    <file_ref>
         <file_number>2<file_number>
-        <open_name><PYMW_ZIP/></open_name>
+        <open_name>$PYMW_ZIP</open_name>
         <copy_file/>
     </file_ref>
 """
@@ -30,22 +30,22 @@ INPUT_TEMPLATE = """\
 <file_info>
     <number>1</number>
 </file_info>
-INPUT_ZIP_INFO
+$INPUT_ZIP_INFO
 <workunit>
     <file_ref>
         <file_number>0<file_number>
-        <open_name><PYMW_EXECUTABLE/></open_name>
+        <open_name>$PYMW_EXECUTABLE</open_name>
         <copy_file/>
     </file_ref>
     <file_ref>
         <file_number>1<file_number>
-        <open_name><PYMW_INPUT/></open_name>
+        <open_name>$PYMW_INPUT</open_name>
         <copy_file/>
     </file_ref>
-    INPUT_ZIP_REF
-    <command_line><PYMW_CMDLINE/></command_line>
-    <min_quorum>1</min_quorum>
-    <target_nresults>2</target_nresults>
+    $INPUT_ZIP_REF
+    <command_line>$PYMW_CMDLINE</command_line>
+    <min_quorum>$MIN_QUORUM</min_quorum>
+    <target_nresults>$TARGET_NRESULTS</target_nresults>
 </workunit>
 """
 
@@ -55,13 +55,13 @@ OUTPUT_TEMPLATE = """\
     <name><OUTFILE_0/></name>
     <generated_locally/>
     <upload_when_present/>
-    <max_nbytes>65536</max_nbytes>
+    <max_nbytes>$MAX_NBYTES</max_nbytes>
     <url><UPLOAD_URL/></url>
 </file_info>
 <result>
     <file_ref>
         <file_name><OUTFILE_0/></file_name>
-        <open_name><PYMW_OUTPUT/></open_name>
+        <open_name>$PYMW_OUTPUT</open_name>
         <copy_file/>
     </file_ref>
 </result>
@@ -71,6 +71,9 @@ lock = threading.Lock()
 
 class BOINCInterface:
     def __init__(self, project_home, custom_app_dir=None, custom_args=[]):
+        self._max_nbytes = 65536
+        self._target_nresults = 2
+        self._min_quorum = 1
         self._project_home = project_home
         self._custom_args = custom_args
         self._project_download = project_home + "/download/"
@@ -158,6 +161,11 @@ class BOINCInterface:
     def _project_path_exists(self):
         return self._project_home != '' and os.path.exists(self._project_home)
     
+    def set_boinc_args(target_nresults=2, min_quorum=1, max_nbytes=65536):
+        self._target_nresults = target_nresults
+        self._min_quorum = min_quorum
+        self._max_nbytes = max_nbytes
+        
     def execute_task(self, task, worker):
         global lock
         
@@ -184,8 +192,11 @@ class BOINCInterface:
             cmd = "cd " + self._project_home
             cmd += ";./bin/dir_hier_path " + in_file
             p = os.popen(cmd, "r")
-            try: in_dest = p.read().strip()
-            finally: p.close()
+            try:
+                in_dest = p.read().strip()
+            finally:
+                p.close()
+            
             in_dest_dir = os.path.dirname(in_dest)
             if os.path.exists(in_dest): os.remove(in_dest)
             
@@ -201,8 +212,11 @@ class BOINCInterface:
             cmd = "cd " + self._project_home
             cmd += ";./bin/dir_hier_path " + task_exe
             p = os.popen(cmd, "r")
-            try: exe_dest = p.read().strip()
-            finally: p.close()
+            try:
+                exe_dest = p.read().strip()
+            finally:
+                p.close()
+            
             exe_dest_dir = os.path.dirname(exe_dest)
             if os.path.exists(exe_dest): os.remove(exe_dest)
             
@@ -217,36 +231,13 @@ class BOINCInterface:
             if zip_file: shutil.copyfile(task._data_file_zip, zip_dest)
                 
             # Create input XML template
-            in_template = "pymw_in_" + str(task._task_name) + ".xml"
-            dest = self._project_templates + in_template
-            boinc_in_template = self._boinc_in_template
-            boinc_in_template = boinc_in_template.replace("<PYMW_EXECUTABLE/>"\
-                                                          , task_exe)
-            boinc_in_template = boinc_in_template.replace("<PYMW_INPUT/>",\
-                                                          in_file)
+            in_template_name = "pymw_in_" + str(task._task_name) + ".xml"
+            dest = self._project_templates + in_template_name
+            boinc_in_template = self._get_input_template(task_exe,
+                                                    zip_file,
+                                                    in_file,
+                                                    out_file)
             
-            if zip_file:
-                boinc_in_template = boinc_in_template.replace("INPUT_ZIP_INFO"\
-                                                              , INPUT_ZIP_INFO)
-                boinc_in_template = boinc_in_template.replace("INPUT_ZIP_REF", \
-                                                              INPUT_ZIP_REF)
-                boinc_in_template = boinc_in_template.replace("<PYMW_ZIP/>", \
-                                                              zip_file)
-            else:
-                boinc_in_template = boinc_in_template.replace("INPUT_ZIP_INFO"\
-                                                              , "")
-                boinc_in_template = boinc_in_template.replace("INPUT_ZIP_REF", \
-                                                              "")
-            
-            if self._custom_args:
-                cust_args = " \"" + " ".join(self._custom_args) + "\" "
-            else:
-                cust_args = ""
-            boinc_in_template = boinc_in_template.replace("<PYMW_CMDLINE/>", \
-                                                          task_exe + \
-                                                          cust_args + \
-                                                          in_file + " " + \
-                                                          out_file)
             logging.debug("writing in xml template: %s" % dest)
             
             f = open(dest, "w")
@@ -256,23 +247,24 @@ class BOINCInterface:
             # Create output XML template
             out_template = "pymw_out_" + str(task._task_name) + ".xml"
             dest = self._project_templates + out_template
-            boinc_out_template = self._boinc_out_template
-            boinc_out_template = boinc_out_template.replace("<PYMW_OUTPUT/>", \
-                                                            out_file)
+            boinc_out_template = self._get_ouput_template(out_file)
             logging.debug("writing out xml template: %s" % dest)
             
             f = open(dest, "w")
-            try: f.writelines(boinc_out_template)
-            finally: f.close()
+            try:
+                f.writelines(boinc_out_template)
+            finally:
+                f.close()
             
             # Call create_work
             cmd =  "cd " + self._project_home 
-            cmd += "; ./bin/create_work -appname pymw -wu_name pymw_" + \
-                   str(task._task_name) + "_b" + self._batch_id
-            cmd += " -wu_template templates/" +  in_template
+            cmd += "; ./bin/create_work -appname pymw -wu_name"
+            cmd += " pymw_" + str(task._task_name) + "_b" + self._batch_id
+            cmd += " -wu_template templates/" +  in_template_name
             cmd += " -result_template templates/" + out_template
             cmd += " -batch " + self._batch_id 
             cmd += " " + task_exe + " " + in_file
+            
             if zip_file:
                 cmd += " " + zip_file
             
@@ -284,7 +276,37 @@ class BOINCInterface:
         
         # Add the task to the current task reclamation queue
         self._queue_task(task, task._output_arg)
+    
+    def _get_ouput_template(self, out_file):
+        outtempl = self._boinc_out_template
+        outtempl = outtempl.replace("$PYMW_OUTPUT", out_file)
+        outtempl = outtempl.replace("$MAX_NBYTES", self._max_nbytes)
+        return outtempl
+    
+    def _get_input_template(self, task_exe, zip_file, in_file, out_file):
+        self._boinc_in_template
+        intempl = intempl.replace("$PYMW_EXECUTABLE", task_exe)
+        intempl = intempl.replace("$PYMW_INPUT", in_file)
+        intempl = intempl.replace("$MIN_QUORUM", self._min_quorum)
+        intempl = intempl.replace("$TARGET_NRESULTS", self._target_nresults)
         
+        if zip_file:
+            intempl = intempl.replace("$INPUT_ZIP_INFO", INPUT_ZIP_INFO)
+            intempl = intempl.replace("$INPUT_ZIP_REF", INPUT_ZIP_REF)
+            intempl = intempl.replace("$PYMW_ZIP", zip_file)
+        else:
+            intempl = intempl.replace("$INPUT_ZIP_INFO", "")
+            intempl = intempl.replace("$INPUT_ZIP_REF", "")
+        
+        if self._custom_args:
+            cust_args = " \"" + " ".join(self._custom_args) + "\" "
+        else:
+            cust_args = ""
+            
+        cmdline = task_exe + cust_args + in_file + " " + out_file
+        intempl = intempl.replace("$PYMW_CMDLINE", cmdline)
+        return intempl
+    
     def _cleanup(self):
         if self._result_checker_running:
             self._task_list_lock.acquire()
