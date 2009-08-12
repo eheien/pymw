@@ -2,7 +2,7 @@
 """Provide a BOINC interface for master worker computing with PyMW.
 """
 
-import threading, shutil, os, sys, re
+import threading, shutil, os, sys
 import time, calendar
 import logging
 import boinc_setup
@@ -109,16 +109,19 @@ class BOINCInterface:
             try:
                 try:
                     for entry in self._task_list:
-                        task,out_file = entry
+                        task, out_file = entry
                         # Check for the output files
                         if os.path.isfile(out_file):
                             task.task_finished()
                             self._task_list.remove(entry)
                         elif os.path.isfile(out_file + ".error"):
                             # error results come back with a ".error" extension
-                            f = open(out_file + ".error")
-                            try: error_message = "".join(f.readlines())
-                            finally: f.close()
+                            f_obj = open(out_file + ".error")
+                            try:
+                                error_message = "".join(f_obj.readlines())
+                            finally:
+                                f_obj.close()
+                            
                             os.remove(out_file + ".error")
                             task.task_finished(task_err=\
                                                Exception("BOINC computation"\
@@ -128,7 +131,7 @@ class BOINCInterface:
                     if len(self._task_list) == 0:
                         self._result_checker_running = False
                         return
-                except Exception,data:
+                except Exception, data:
                     # just in case a higher-level process is hiding exceptions
                     # log any exception that occures and then re-raise it
                     logging.critical("BOINCInterface._get_finished_tasks" + \
@@ -149,8 +152,10 @@ class BOINCInterface:
         # force an absolute path to prevent CWD bugs
         output_file = os.path.abspath(output_file)
         self._task_list_lock.acquire()
-        try: self._task_list.append((task,output_file))
-        finally: self._task_list_lock.release()
+        try:
+            self._task_list.append((task, output_file))
+        finally:
+            self._task_list_lock.release()
         
         if not self._result_checker_running:
             self._result_checker_running = True
@@ -161,14 +166,14 @@ class BOINCInterface:
     def _project_path_exists(self):
         return self._project_home != '' and os.path.exists(self._project_home)
     
-    def set_boinc_args(target_nresults=2, min_quorum=1, max_nbytes=65536):
+    def set_boinc_args(self, target_nresults=2, min_quorum=1, max_nbytes=65536):
         self._target_nresults = target_nresults
         self._min_quorum = min_quorum
         self._max_nbytes = max_nbytes
         
     def execute_task(self, task, worker):
-        global lock
-        
+        """Executes a task on the given worker
+        """
         # Check if project_home dir is known
         if not self._project_path_exists():
             logging.critical("Missing BOINC project home directory")
@@ -278,13 +283,17 @@ class BOINCInterface:
         self._queue_task(task, task._output_arg)
     
     def _get_ouput_template(self, out_file):
+        """Returns a populated output BOINC template
+        """
         outtempl = self._boinc_out_template
         outtempl = outtempl.replace("$PYMW_OUTPUT", out_file)
         outtempl = outtempl.replace("$MAX_NBYTES", self._max_nbytes)
         return outtempl
     
     def _get_input_template(self, task_exe, zip_file, in_file, out_file):
-        self._boinc_in_template
+        """Returns a populated input BOINC template
+        """
+        intempl = self._boinc_in_template
         intempl = intempl.replace("$PYMW_EXECUTABLE", task_exe)
         intempl = intempl.replace("$PYMW_INPUT", in_file)
         intempl = intempl.replace("$MIN_QUORUM", self._min_quorum)
@@ -305,6 +314,7 @@ class BOINCInterface:
             
         cmdline = task_exe + cust_args + in_file + " " + out_file
         intempl = intempl.replace("$PYMW_CMDLINE", cmdline)
+        
         return intempl
     
     def _cleanup(self):
