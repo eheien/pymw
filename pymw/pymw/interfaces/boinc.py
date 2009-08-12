@@ -239,7 +239,7 @@ class BOINCInterface:
                                                               "")
             
             if self._custom_args:
-                cust_args = " " + " ".join(self._custom_args) + " "
+                cust_args = " \"" + " ".join(self._custom_args) + "\" "
             else:
                 cust_args = ""
             boinc_in_template = boinc_in_template.replace("<PYMW_CMDLINE/>", \
@@ -356,6 +356,9 @@ class Manager():
         self.Boinc.database.connect()
         
         try:
+            unsent = self.Boinc.boinc_db.RESULT_SERVER_STATE_UNSENT
+            over = self.Boinc.boinc_db.RESULT_SERVER_STATE_OVER
+            didnt_need = self.Boinc.boinc_db.RESULT_OUTCOME_DIDNT_NEED
             units = self.Boinc.database.Workunits.find(batch=batch_id)
             for wu in units:
                 wu.batch = 0
@@ -363,9 +366,6 @@ class Manager():
                     wu.error_mask |= self.Boinc.boinc_db.WU_ERROR_CANCELED
                     results = self.Boinc.database.Results.find(workunit=wu)
                     for result in results:
-                        unsent = self.Boinc.boinc_db.RESULT_SERVER_STATE_UNSENT
-                        over = self.Boinc.boinc_db.RESULT_SERVER_STATE_OVER
-                        didnt_need = self.Boinc.boinc_db.RESULT_OUTCOME_DIDNT_NEED
                         if result.server_status == unsent:
                             result.server_status = over
                             result.outcome = didnt_need
