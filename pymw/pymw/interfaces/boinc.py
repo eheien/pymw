@@ -178,10 +178,12 @@ class BOINCInterface:
         if not self._project_path_exists():
             logging.critical("Missing BOINC project home directory")
             raise Exception("Missing BOINC project home directory (-p switch)")
-        
+
+        new_exe = task._executable.replace(".py", "_b" + self._batch_id + ".py")        
         in_file = os.path.basename(task._input_arg)
         out_file = os.path.basename(task._output_arg)
-        task_exe = os.path.basename(task._executable)
+        task_exe = os.path.basename(new_exe)
+
         if task._data_file_zip:
             zip_file = os.path.basename(task._data_file_zip)
         else:
