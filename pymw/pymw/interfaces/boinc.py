@@ -245,9 +245,11 @@ class BOINCInterface:
             
             logging.debug("writing in xml template: %s" % dest)
             
-            f = open(dest, "w")
-            try: f.writelines(boinc_in_template)
-            finally: f.close()
+            f_obj = open(dest, "w")
+            try:
+                f_obj.writelines(boinc_in_template)
+            finally:
+                f_obj.close()
             
             # Create output XML template
             out_template = "pymw_out_" + str(task._task_name) + ".xml"
@@ -287,7 +289,7 @@ class BOINCInterface:
         """
         outtempl = self._boinc_out_template
         outtempl = outtempl.replace("$PYMW_OUTPUT", out_file)
-        outtempl = outtempl.replace("$MAX_NBYTES", self._max_nbytes)
+        outtempl = outtempl.replace("$MAX_NBYTES", str(self._max_nbytes))
         return outtempl
     
     def _get_input_template(self, task_exe, zip_file, in_file, out_file):
@@ -296,8 +298,8 @@ class BOINCInterface:
         intempl = self._boinc_in_template
         intempl = intempl.replace("$PYMW_EXECUTABLE", task_exe)
         intempl = intempl.replace("$PYMW_INPUT", in_file)
-        intempl = intempl.replace("$MIN_QUORUM", self._min_quorum)
-        intempl = intempl.replace("$TARGET_NRESULTS", self._target_nresults)
+        intempl = intempl.replace("$MIN_QUORUM", str(self._min_quorum))
+        intempl = intempl.replace("$TARGET_NRESULTS", str(self._target_nresults))
         
         if zip_file:
             intempl = intempl.replace("$INPUT_ZIP_INFO", INPUT_ZIP_INFO)
