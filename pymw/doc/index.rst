@@ -9,6 +9,7 @@ Welcome to PyMW's documentation!
 Contents:
 
 .. toctree::
+   :numbered:
    :maxdepth: 2
    
    intro
