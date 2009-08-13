@@ -26,31 +26,28 @@ Uses the `Condor desktop grid system <http://www.cs.wisc.edu/condor/>`_ to perfo
 BOINC
 ^^^^^
 Uses the `BOINC volunteer computing system <http://boinc.berkeley.edu/>`_ to
-perform tasks. Without using a custom worker app, such as
-`PyBOINC <http://bitbucket.org/jeremycowles/pyboinc>`_, Python is required to be
-installed on the client machines and must be available on the PATH environment
-variable (i.e. typing "python" will run the interpreter from any directory).
-
-However, by using PyBOINC, no interpreter is needed on the client machine and
-no assumptions are made about the PATH evnironment variable.
-
-Basic Setup
-"""""""""""
-To create a BOINC application using PyMW one must:
+perform tasks. To create a BOINC application using PyMW one must:
 
 * Setup a BOINC server
 * Create a new project using the tools/create_project script
 * Pass the path to the new project as the BOINC interface's "project_home"
   parameter
-* Optionally, pass the path to the custom worker app (PyBOINC) and any arguments
-  needed to run it. PyBOINC requires one argument, the name of the zipped Python
-  library to use for execution without the platform name
-  (i.e. 1.00_python26.zip)
+* Optionally, pass the path to the custom worker app (such as PyBOINC, discussed
+  below) and any arguments needed to run it. PyBOINC requires one argument,
+  the name of the zipped Python library to use for execution without the
+  platform name (i.e. 1.00_python26.zip)
+
+Without using a custom worker app, such as
+`PyBOINC <http://bitbucket.org/jeremycowles/pyboinc>`_, Python is required to be
+installed on the client machines and must be available on the PATH environment
+variable (i.e. typing "python" will run the interpreter from any directory).
+However, by using PyBOINC, no interpreter is needed on the client machine and
+no assumptions are made about the PATH evnironment variable.
 
 Creating a server is relatively simple using the VM Image and is a good way to
 get up and running quickly with BOINC. After you have setup
-a BOINC VM, the Python Apps page describes how to use it to run PyMW apps on
-the BOINC VM.
+a BOINC VM, the Python Apps page in the BOINC wiki provides a step-by-step
+walkthrough of how to run PyMW apps using the VM.
 
 .. seealso::
 
