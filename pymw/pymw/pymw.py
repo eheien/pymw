@@ -115,11 +115,15 @@ class InterfaceException(Exception):
 
 class PyMW_Task:
     """Represents a task to be executed."""
+    
+    TASK_SUBMITTED = "submitted"
+    TASK_RUNNING = "running"
+    TASK_ERROR = "error"
+    TASK_FINISHED = "finished"
+    
     def __init__(self, task_name, executable, finished_queue, store_data_func, get_result_func,
                  input_data=None, input_arg=None, output_arg=None, file_loc="tasks",
                  data_file_zip=None, modules_file_zip=None, file_input=False):
-        self._finish_event = threading.Event()
-        
         # Make sure executable is valid
         if not isinstance(executable, types.StringType) and not isinstance(executable, types.FunctionType):
             raise TypeError("executable must be a filename or Python function")
@@ -154,6 +158,8 @@ class PyMW_Task:
         except:
             pass
         
+        self._task_state = self.TASK_SUBMITTED
+        
         # Task time bookkeeping
         self._times = {"submit_time": time.time(), "execute_time": 0, "finish_time": 0}
 
@@ -163,7 +169,7 @@ class PyMW_Task:
     def _state_data(self):
         return {"task_name": self._task_name, "executable": self._executable,
                 "input_arg": self._input_arg, "output_arg": self._output_arg,
-                "times": self._times, "finished": self._finish_event.isSet()}
+                "times": self._times, "state": self._task_state}
     
     def task_finished(self, task_err=None, result=None):
         """This must be called by the interface class when the
@@ -173,7 +179,7 @@ class PyMW_Task:
         self._error = task_err
         if task_err:
             logging.info("Task "+str(self)+" had an error")
-        elif result==None:
+        elif not result:
             try:
                 self._output_data, self._stdout, self._stderr = self._get_result_func(self._output_arg)
             except:
@@ -188,29 +194,21 @@ class PyMW_Task:
                     self._output_data.append(cPickle.loads(f.read()))
             except:
                 self._output_data = result
-
             logging.info("Task "+str(self)+" finished")
         
         self._times["finish_time"] = time.time()
-        self._finish_event.set()
+        if self._error: self._task_state = self.TASK_ERROR
+        else: self._task_state = self.TASK_FINISHED
         self._finished_queue.append(self)
         try:
             self._worker_finish_func(self._assigned_worker)
         except:
             pass
 
-    def is_task_finished(self, wait):
-        """Checks if the task is finished, and optionally waits for it to finish."""
-        if not self._finish_event.isSet():
-            if not wait:
-                return False
-            self._finish_event.wait()
-        return True
-
     def get_total_time(self):
         """Get the time from task submission to completion.
         Returns None if task has not finished execution."""
-        if self._times["finish_time"] != 0:
+        if self._task_state is self.TASK_FINISHED or self._task_state is self.TASK_ERROR:
             return self._times["finish_time"] - self._times["submit_time"]
         else:
             return None
@@ -219,11 +217,17 @@ class PyMW_Task:
         """Get the time from start of task execution to completion.
         This may be different from the CPU time.
         Returns None if task has not finished execution."""
-        if self._times["finish_time"] != 0:
+        if self._task_state is self.TASK_FINISHED or self._task_state is self.TASK_ERROR:
             return self._times["finish_time"] - self._times["execute_time"]
         else:
             return None
 
+    def get_progress(self):
+        """Get the progress of the task, as represented by a double between 0 and 1."""
+        if self._task_state is self.TASK_FINISHED: return 1.0
+        elif self._task_state is self.TASK_SUBMITTED: return 0.0
+        else: return 0.0
+    
     def cleanup(self, delete_files):
         try:
             if delete_files:
@@ -488,6 +492,20 @@ class PyMW_Master:
         else:
             self._data_file_zips[file_hash] = arch_file_name
             return self._data_file_zips[file_hash]
+
+    def _check_task_list(self, task_list):
+        if len(self._submitted_tasks) <= 0:
+            raise TaskException("No tasks have been submitted")
+        
+        # Check that the task(s) are of type PyMW_Task
+        for t in task_list:
+            if not isinstance(t, PyMW_Task):
+                raise TaskException("Function requires either a task, a list of tasks, or None")
+        
+        # Check that the task(s) have been submitted before
+        submit_intersect = set(self._submitted_tasks) & set(task_list)
+        if len(submit_intersect) != len(task_list):
+            raise TaskException("Task has not been submitted")
         
     def submit_task(self, executable, input_data=None, modules=(), dep_funcs=(), data_files=(), input_from_file=False):
         """Creates and submits a task to the internal list for execution.
@@ -545,15 +563,12 @@ class PyMW_Master:
         self._scheduler._start_scheduler()
         
         return new_task
-
+        
     def get_result(self, task=None, blocking=True):
         """Gets the result of the executed task.
         If task is None, return the result of the next finished task.
         If task is a list of tasks, return the result of any task in the list.
         If blocking is false and the task is not finished, returns None."""
-        
-        if len(self._submitted_tasks) <= 0:
-            raise TaskException("No tasks have been submitted")
         
         if not task:
             task_list = []
@@ -562,15 +577,8 @@ class PyMW_Master:
         else:
             task_list = [task]
         
-        # Check that the task(s) are of type PyMW_Task
-        for t in task_list:
-            if not isinstance(t, PyMW_Task):
-                raise TaskException("get_result accepts either a task, a list of tasks, or None")
-        
-        # Check that the task(s) have been submitted before
-        submit_intersect = set(self._submitted_tasks) & set(task_list)
-        if len(submit_intersect) != len(task_list):
-            raise TaskException("Task has not been submitted")
+        # Check that the task(s) are of type PyMW_Task and have been submitted before
+        self._check_task_list(task_list)
         
         my_task = self._finished_tasks.pop_specific(task_list, blocking)
         
@@ -582,6 +590,20 @@ class PyMW_Master:
         
         return my_task, my_task._output_data
     
+    def get_progress(self, task):
+        if not task:
+            task_list = []
+        elif type(task)==list:
+            task_list = task
+        else:
+            task_list = [task]
+        
+        # Check that the task(s) are of type PyMW_Task and have been submitted before
+        self._check_task_list(task_list)
+        
+        task_progress = [task.get_progress() for task in task_list]
+        return task_progress
+        
     def get_status(self):
         try:
             status = self._interface.get_status()
@@ -650,6 +672,9 @@ class PyMW_Master:
         cPickle.Pickler(outfile).dump(output)
         outfile.close()
 
+    def pymw_set_progress(prog_ratio):
+        return
+    
     def pymw_emit_result(result):
         global _res_array
         _res_array.append(result)
