@@ -15,16 +15,13 @@ class SimWorker:
 		self._executed_task_times = []
 
 class GridSimulatorInterface:
-	def __init__(self, trace_files=""):
+	def __init__(self, trace_files=[]):
 		self._num_workers = 10
 		self._num_executed_tasks = 0
-		self._worker_list = []
-		for worker_num in range(self._num_workers):
-			self._worker_list.append(SimWorker())
+		self._worker_list = [SimWorker() for worker_num in range(self._num_workers)]
 	
 	def get_available_workers(self):
-		avail_list = [None]
-		return avail_list
+		return self._worker_list
 	
 	def reserve_worker(self, worker):
 		min_avail_time = 1E10
@@ -37,6 +34,9 @@ class GridSimulatorInterface:
 		return min_worker
 	
 	def execute_task(self, task, worker):
+		if not worker:
+			task.task_finished(Exception("Cannot use NULL worker"))
+			return
 		task_exec_time = random.uniform(60, 120)
 		self._num_executed_tasks += 1
 		worker._next_avail += task_exec_time
