@@ -123,7 +123,7 @@ class PyMW_Task:
     
     def __init__(self, task_name, executable, finished_queue, store_data_func, get_result_func,
                  input_data=None, input_arg=None, output_arg=None, file_loc="tasks",
-                 data_file_zip=None, modules_file_zip=None, file_input=False):
+                 data_file_zip=None, modules_file_zip=None, file_input=False, raw_exec=None):
         # Make sure executable is valid
         if not isinstance(executable, types.StringType) and not isinstance(executable, types.FunctionType):
             raise TypeError("executable must be a filename or Python function")
@@ -138,6 +138,7 @@ class PyMW_Task:
         self._file_input = file_input
         self._data_file_zip = data_file_zip
         self._modules_file_zip = modules_file_zip
+        self._raw_exec = raw_exec
 
         # Set the input and output file locations
         if input_arg:
@@ -556,7 +557,8 @@ class PyMW_Master:
                              store_data_func=store_func, get_result_func=get_result_func,
                              finished_queue=self._finished_tasks, input_data=input_data,
                              file_loc=self._task_dir_name, data_file_zip=zip_arch_file,
-                             modules_file_zip=mod_arch_file, file_input=input_from_file)
+                             modules_file_zip=mod_arch_file, file_input=input_from_file,
+                             raw_exec=executable)
         
         self._submitted_tasks.append(new_task)
         self._queued_tasks.append(item=new_task)
