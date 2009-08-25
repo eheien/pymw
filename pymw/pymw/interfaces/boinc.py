@@ -70,7 +70,7 @@ OUTPUT_TEMPLATE = """\
 lock = threading.Lock()
 
 class BOINCInterface:
-    def __init__(self, project_home, custom_app_dir=None, custom_args=[]):
+    def __init__(self, project_home, custom_app_dir=None, custom_args=[], task_path="tasks"):
         self._max_nbytes = 65536
         self._target_nresults = 2
         self._min_quorum = 1
@@ -90,7 +90,7 @@ class BOINCInterface:
         self._task_finish_thread = None
         
         # auto-magical BOINC installation script
-        boinc_setup.install_pymw(project_home, custom_app_dir)
+        boinc_setup.install_pymw(project_home, custom_app_dir, task_path)
 
     def _get_unix_timestamp(self):
         return calendar.timegm(time.gmtime())
@@ -179,11 +179,17 @@ class BOINCInterface:
             logging.critical("Missing BOINC project home directory")
             raise Exception("Missing BOINC project home directory (-p switch)")
 
-        new_exe = task._executable.replace(".py", "_b" + self._batch_id + ".py")        
-        in_file = os.path.basename(task._input_arg)
-        out_file = os.path.basename(task._output_arg)
+        bid = "_b" + self._batch_id
+        new_exe = task._executable.replace(".py", bid + ".py")
         task_exe = os.path.basename(new_exe)
 
+        in_file = os.path.basename(task._input_arg)
+        in_file = in_file.replace(".dat", bid + ".dat")
+        
+        task._output_arg = task._output_arg.replace(".dat", bid + ".dat")
+        out_file = os.path.basename(task._output_arg)
+        
+        
         if task._data_file_zip:
             zip_file = os.path.basename(task._data_file_zip)
         else:
@@ -205,16 +211,20 @@ class BOINCInterface:
                 p.close()
             
             in_dest_dir = os.path.dirname(in_dest)
-            if os.path.exists(in_dest): os.remove(in_dest)
+            if os.path.exists(in_dest):
+                os.remove(in_dest)
             
             if zip_file:
                 cmd = "cd " + self._project_home
                 cmd += ";./bin/dir_hier_path " + zip_file
                 p = os.popen(cmd, "r")
-                try: zip_dest = p.read().strip()
-                finally: p.close()
+                try:
+                    zip_dest = p.read().strip()
+                finally:
+                    p.close()
                 zip_dest_dir = os.path.dirname(zip_dest)
-                if os.path.exists(zip_dest): os.remove(zip_dest)
+                if os.path.exists(zip_dest):
+                    os.remove(zip_dest)
             
             cmd = "cd " + self._project_home
             cmd += ";./bin/dir_hier_path " + task_exe
@@ -284,7 +294,8 @@ class BOINCInterface:
             logging.debug("Releasing thread lock")
         
         # Add the task to the current task reclamation queue
-        self._queue_task(task, task._output_arg)
+        pickup_file = os.path.join(os.path.dirname(task._output_arg), out_file)
+        self._queue_task(task, pickup_file)
     
     def _get_ouput_template(self, out_file):
         """Returns a populated output BOINC template
@@ -297,19 +308,19 @@ class BOINCInterface:
     def _get_input_template(self, task_exe, zip_file, in_file, out_file):
         """Returns a populated input BOINC template
         """
-        intempl = self._boinc_in_template
-        intempl = intempl.replace("$PYMW_EXECUTABLE", task_exe)
-        intempl = intempl.replace("$PYMW_INPUT", in_file)
-        intempl = intempl.replace("$MIN_QUORUM", str(self._min_quorum))
-        intempl = intempl.replace("$TARGET_NRESULTS", str(self._target_nresults))
+        intmp = self._boinc_in_template
+        intmp = intmp.replace("$PYMW_EXECUTABLE", task_exe)
+        intmp = intmp.replace("$PYMW_INPUT", in_file)
+        intmp = intmp.replace("$MIN_QUORUM", str(self._min_quorum))
+        intmp = intmp.replace("$TARGET_NRESULTS", str(self._target_nresults))
         
         if zip_file:
-            intempl = intempl.replace("$INPUT_ZIP_INFO", INPUT_ZIP_INFO)
-            intempl = intempl.replace("$INPUT_ZIP_REF", INPUT_ZIP_REF)
-            intempl = intempl.replace("$PYMW_ZIP", zip_file)
+            intmp = intmp.replace("$INPUT_ZIP_INFO", INPUT_ZIP_INFO)
+            intmp = intmp.replace("$INPUT_ZIP_REF", INPUT_ZIP_REF)
+            intmp = intmp.replace("$PYMW_ZIP", zip_file)
         else:
-            intempl = intempl.replace("$INPUT_ZIP_INFO", "")
-            intempl = intempl.replace("$INPUT_ZIP_REF", "")
+            intmp = intmp.replace("$INPUT_ZIP_INFO", "")
+            intmp = intmp.replace("$INPUT_ZIP_REF", "")
         
         if self._custom_args:
             cust_args = " \"" + " ".join(self._custom_args) + "\" "
@@ -317,9 +328,9 @@ class BOINCInterface:
             cust_args = ""
             
         cmdline = task_exe + cust_args + in_file + " " + out_file
-        intempl = intempl.replace("$PYMW_CMDLINE", cmdline)
+        intmp = intmp.replace("$PYMW_CMDLINE", cmdline)
         
-        return intempl
+        return intmp
     
     def _cleanup(self):
         if self._result_checker_running:

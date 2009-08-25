@@ -86,7 +86,7 @@ def get_winworker_path():
     return None
  
 
-def install_pymw(project_path, custom_app_dir=None):
+def install_pymw(project_path, custom_app_dir=None, task_path="tasks"):
     """Installs a default app named "pymw" into BOINC and
     sets up the assimilator to look in the current directory
     to pick up workunits. In addition to setting up the 
@@ -100,7 +100,7 @@ def install_pymw(project_path, custom_app_dir=None):
     # load BOINC internal Python code
     boinc_import_hack(project_path)
 
-    config = setup_config(os.path.join(sys.path[0], "tasks"))
+    config = setup_config(os.path.abspath(task_path))
     setup_project()
     
     install_apps(config, custom_app_dir)
@@ -149,7 +149,7 @@ def setup_config(task_path):
     add_daemon(config, asm, "sample_trivial_validator")
 
     # add a feeder and a transitioner
-    asm = "feeder -d 3"
+    asm = "feeder -d 3 -random_order"
     add_daemon(config, asm, "feeder")
     asm = "transitioner -d 3"
     add_daemon(config, asm, "transitioner")
