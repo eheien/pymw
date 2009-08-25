@@ -117,18 +117,18 @@ def check_daemons(project_path):
     """
     stopped = os.path.exists(os.path.join(project_path, STOP_TRIGGER))
     
-    logging.debug("Recycling BOINC daemons")
+    logging.debug("Checking status of BOINC daemons")
     
     if stopped:
         # try to start the daemons
         logging.debug("Current status: STOPPED")
+        logging.debug("Attempting to start BOINC daemons...")
+        os.system(os.path.join(project_path, "bin", "start"))
     else:
         logging.debug("Current status: RUNNING")
-        logging.debug("Attempting to stop BOINC daemons...")
-        os.system(os.path.join(project_path, "bin", "stop"))
-    logging.debug("Attempting to start BOINC daemons...")
-    os.system(os.path.join(project_path, "bin", "start"))
-    logging.debug("BOINC daemons recycle complete")
+        #logging.debug("Attempting to stop BOINC daemons...")
+        #os.system(os.path.join(project_path, "bin", "stop"))
+    logging.debug("BOINC daemons running")
 
 def setup_config(task_path):
     """Adds appropriate daemons to the BOINC config.xml file.

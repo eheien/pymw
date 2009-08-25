@@ -181,10 +181,16 @@ class BOINCInterface:
 
         bid = "_b" + self._batch_id
         new_exe = task._executable.replace(".py", bid + ".py")
+        logging.debug("Moving executable")
+        shutil.copy2(task._executable, new_exe)
+        logging.debug("success")
+        task._executable = new_exe
         task_exe = os.path.basename(new_exe)
 
+        in_file = task._input_arg.replace(".dat", bid + ".dat")
+        shutil.move(task._input_arg, in_file)
+        task._input_arg = in_file
         in_file = os.path.basename(task._input_arg)
-        in_file = in_file.replace(".dat", bid + ".dat")
         
         task._output_arg = task._output_arg.replace(".dat", bid + ".dat")
         out_file = os.path.basename(task._output_arg)
