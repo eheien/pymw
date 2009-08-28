@@ -388,6 +388,7 @@ class PyMW_Master:
         else:
             self._interface = interfaces.generic.GenericInterface()
         
+        self._start_time_str = str(int(time.time()))
         self._submitted_tasks = []
         self._queued_tasks = PyMW_List()
         self._finished_tasks = PyMW_List()
@@ -515,12 +516,12 @@ class PyMW_Master:
         
         # Check if the executable is a Python function or a script
         if callable(executable):
-            task_name = str(executable.func_name)+"_"+str(self._cur_task_num)
-            exec_file_name = self._task_dir_name+"/"+str(executable.func_name)+".py"
+            task_name = str(executable.func_name)+"_"+self._start_time_str+"_"+str(self._cur_task_num)
+            exec_file_name = self._task_dir_name+"/"+str(executable.func_name)+"_"+self._start_time_str+".py"
         elif isinstance(executable, str):
             # TODO: test here for existence of script
-            task_name = str(executable)+"_"+str(self._cur_task_num)
-            exec_file_name = executable+".py"
+            task_name = str(executable)+"_"+self._start_time_str+"_"+str(self._cur_task_num)
+            exec_file_name = executable+"_"+self._start_time_str+".py"
         else:
             raise TaskException("Executable must be a filename or function")
         
