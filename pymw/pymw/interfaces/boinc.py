@@ -180,16 +180,9 @@ class BOINCInterface:
             raise Exception("Missing BOINC project home directory (-p switch)")
 
         bid = "_b" + self._batch_id
-        new_exe = task._executable.replace(".py", bid + ".py")
-        logging.debug("Moving executable")
-        shutil.copy2(task._executable, new_exe)
-        logging.debug("success")
-        task._executable = new_exe
+        new_exe = task._executable 
         task_exe = os.path.basename(new_exe)
 
-        in_file = task._input_arg.replace(".dat", bid + ".dat")
-        shutil.move(task._input_arg, in_file)
-        task._input_arg = in_file
         in_file = os.path.basename(task._input_arg)
         
         task._output_arg = task._output_arg.replace(".dat", bid + ".dat")
@@ -284,7 +277,7 @@ class BOINCInterface:
             # Call create_work
             cmd =  "cd " + self._project_home 
             cmd += "; ./bin/create_work -appname pymw -wu_name"
-            cmd += " pymw_" + str(task._task_name) + "_b" + self._batch_id
+            cmd += " pymw_" + str(task._task_name) 
             cmd += " -wu_template templates/" +  in_template_name
             cmd += " -result_template templates/" + out_template
             cmd += " -batch " + self._batch_id 
