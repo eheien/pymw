@@ -5,6 +5,8 @@
 __author__ = "Eric Heien <e-heien@ist.osaka-u.ac.jp>"
 __date__ = "22 February 2009"
 
+# NOTE: if anyone has an error with zip files on this interface, please contact the PyMW authors
+
 import subprocess
 import sys
 import ctypes
@@ -15,12 +17,6 @@ import cPickle
 import cStringIO
 import tempfile
 import shutil
-
-"""On worker restarting:
-Multicore systems cannot handle worker restarts - recording PIDs
-can result in unspecified behavior (especially if the system is restarted).
-The solution is to check for a result on program restart - if it's not there,
-delete the directory and start the task anew."""
 
 class Worker:
     def __init__(self):
@@ -87,7 +83,7 @@ class MulticoreInterface:
             if task._file_input==True:
                 self._output_objs[task._output_arg][0]=[task._output_arg]
         else:
-            raise Exception("Executable failed with error "+str(retcode), proc_stderr)
+            raise Exception("Executable failed with error "+str(retcode)+"\n"+proc_stderr)
                 
         worker._exec_process = None
         task.task_finished()    # notify the task
