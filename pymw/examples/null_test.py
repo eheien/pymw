@@ -39,10 +39,7 @@ post_init_time = time.time()
 tasks = [pymw_master.submit_task(null_worker, input_data=(range(task_size*256),)) for i in range(n_tasks)]
 
 for task in tasks:
-    try:
-        res_task, res = pymw_master.get_result(task)
-    except:
-        pass
+    res_task, res = pymw_master.get_result(task)
 
 end_time = time.time()
 total_io = 2*task_size*n_tasks/1024.0

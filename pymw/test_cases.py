@@ -5,6 +5,7 @@ import threading
 import os
 import signal
 import tempfile
+import logging
 
 # TODO: add test for sending archives of files
 # TODO: add test for sending modules
@@ -162,7 +163,7 @@ class TestPyMW(unittest.TestCase):
         try:
             self.pymw_master.get_result(task)
         except Exception, e:
-            self.assert_(e[1].count("integer division or modulo by zero")>0)
+            self.assert_(e[0].count("integer division or modulo by zero")>0)
     
     def testStdoutStderr(self):
         """Checking that stdout and stderr are correctly routed from the workers"""
