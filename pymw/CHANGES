@@ -1,15 +1,17 @@
 
 Changes in 0.3
-- Added MapReduce class for use with PyMW
-- Added interface for performing simulations
-- Added worker-task matching functionality
-- Added support for file attachments to tasks
+- Added MapReduce class for use with PyMW.
+- Added interface for performing simulations.
+- Added worker-task matching functionality.
+- Added support for file attachments to tasks.
+- Added traceback for worker exceptions.
+- Simplified interface design and function.
 - BOINC interface changes
-  - Added native worker for launching scripts in Windows
-  - Added support for custom, cross-platform workers
-  - Removed old pymw_setup script (automatic now)
-  - Added attribs to customize boinc work units
-  - Updated to use the new structure for Boinc Python lib
+  - Added native worker for launching scripts in Windows.
+  - Added support for custom, cross-platform workers.
+  - Removed old pymw_setup script (automatic now).
+  - Added attributes to customize BOINC work units.
+  - Updated to use the new structure for BOINC Python library.
 
 Changes in 0.2
 - Added support for computing in Condor grids.
