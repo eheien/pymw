@@ -5,19 +5,20 @@
 __author__ = "Eric Heien <e-heien@ist.osaka-u.ac.jp>"
 __date__ = "10 April 2008"
 
-import threading
-import cPickle
-import time
-import os
-import sys
-import types
 import atexit
+import cPickle
 import errno
 import logging
 import inspect
+import os
 import signal
+import sys
 import tempfile
 import textwrap
+import threading
+import time
+import traceback
+import types
 import zipfile
 import interfaces.generic
 import interfaces.multicore
@@ -397,7 +398,7 @@ class PyMW_Master:
         self._task_dir_name = os.getcwd() + "/tasks"
         self._cur_task_num = 0
         self._function_source = {}
-        self.pymw_interface_modules = "cPickle", "sys", "cStringIO", "zipfile"
+        self.pymw_interface_modules = "cPickle", "sys", "cStringIO", "zipfile", "traceback"
         self._data_file_zips = {}
         self._module_zips = {}
 
@@ -716,6 +717,7 @@ class PyMW_Master:
         except Exception, e:
             sys.stdout = old_stdout
             sys.stderr = old_stderr
+            traceback.print_exc()
             exit(e)
         
     def pymw_worker_func(func_name_to_call, options):
