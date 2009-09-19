@@ -374,6 +374,7 @@ class PyMW_Scheduler:
             next_task._times["execute_time"] = time.time()
             execute_task_func(next_task, worker)
         except Exception, e:
+            traceback.print_exc()
             next_task.task_finished(e)
     
     def _exit(self):
