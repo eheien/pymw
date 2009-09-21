@@ -1,4 +1,6 @@
 
+Changes in 0.4
+
 Changes in 0.3
 - Added MapReduce class for use with PyMW.
 - Added interface for performing simulations.
