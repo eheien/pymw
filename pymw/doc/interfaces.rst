@@ -7,20 +7,22 @@ PyMW provides different interfaces for a variety of computation environments.
 ^^^^^^^
 Generic
 ^^^^^^^
-Uses multiple processes spawned with subprocess.Popen() on a single machine to perform calculations.
-
-^^^^^^^^^
-Multicore
-^^^^^^^^^
+Uses multiple processes spawned with subprocess.Popen() on a single machine to perform tasks.  This interface requires no special setup, and works with Python 2.5 and above.
 
 ^^^
 MPI
 ^^^
+Uses Python module pyMPI to execute tasks on MPI enabled clusters.  This interface requires `pyMPI <http://pympi.sourceforge.net/>`_ to be installed.
 
 ^^^^^^
 Condor
 ^^^^^^
-Uses the `Condor desktop grid system <http://www.cs.wisc.edu/condor/>`_ to perform tasks.
+Uses the `Condor desktop grid system <http://www.cs.wisc.edu/condor/>`_ to execute tasks.  Currently only works with Windows.
+
+^^^^^^^^^^^^^^
+Grid Simulator
+^^^^^^^^^^^^^^
+The grid simulator interface is different from other interfaces in that it is not meant to perform actual tasks. Instead, the function used as the task is called to determine how long a task will take to execute on a given worker.  This interface can be used to test different scheduling algorithms before deploying a system.  It requires no special setup.
 
 ^^^^^
 BOINC
@@ -148,11 +150,3 @@ to increment the version number if you happen to change the contents of the zip.
 Security Concerns
 """""""""""""""""
 PyMW allows arbitrary execution of unsigned Python code on compute nodes, which is not typical of large BOINC projects. For a large-scale public project, PyMW scripts must be digitally signed on a remote machine (signing on the BOINC server is equally insecure). Unsigned executables should never be sent as part of work units on a public project.
-
-
-^^^^^^^^^^^^^^
-Grid Simulator
-^^^^^^^^^^^^^^
-The grid simulator interface is different from other interfaces in that it is not meant to perform actual tasks.
-
-Currently under development.

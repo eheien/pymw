@@ -5,9 +5,9 @@ This is the documentation for PyMW (Python Master Worker). PyMW is a Python modu
 
 The focus of PyMW is providing tools for simple, user-friendly parallel computing. Although high performance is a goal of PyMW, the main goal is simplicity.
 
----------------------------------------
-Types of computations suitable for PyMW
----------------------------------------
+------------------------------
+Computations suitable for PyMW
+------------------------------
 **Parameter Sweep**
 
 A parameter sweep is where the same computation is repeatedly performed using different inputs each time. This is often used to sweep through a range of parameters and find the relation between inputs and outputs.
@@ -18,15 +18,9 @@ The Monte Carlo method uses random numbers to account for uncertainty in a compu
 
 **Genetic Algorithms/Optimization Techniques**
 
-Genetic algorithms attempt to optimize a function with regards to a set of inputs. (more detail)
+Genetic algorithms attempt to optimize a function with regards to a set of inputs. In this case, master-worker parallelization may work well in evaluating each possible solution.
 
 -------------------------------------------
 Types of computations not suitable for PyMW
 -------------------------------------------
-**Complex parallel computations**
-
-with communication between workers
-
-**Master-worker computation**
-
-is not suited for problems where (subsets) of the problem must communicate with each other.  Depending on the problem scale, it is best to use either MPI on a cluster, OpenMP on a multicore machine, or CUDA/OpenCL on a GPU.
+PyMW is not well suited for computations with frequent communication and sharing of data between workers.
