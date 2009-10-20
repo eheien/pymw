@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-from pymw import *
+from pymw import pymw
 import time
 import random
 import math
@@ -71,8 +71,9 @@ for i in range(num_tasks):
 
 end_time = time.time()
 
-pi_estimate = 4 * float(num_hits)/num_tests
-print pi_estimate, pi_estimate-math.pi
+pi_estimate = 4.0 * float(num_hits)/num_tests
+print "Estimate of pi:", pi_estimate
+print "Estimate error:", abs(pi_estimate-math.pi)
 print "Number of Tasks:", str(num_tasks)
 print "Calculation time:", str(end_time-post_init_time)
 print "Total time:", str(end_time-start_time)
