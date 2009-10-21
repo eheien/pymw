@@ -16,7 +16,7 @@ Next, write the function you want to run in parallel.  For example::
 
 	def square(x): return x*x
 
-Next, create an interface object and register it with a PyMW_Master object. These will provide the functions needed to submit tasks and get results. A list of interfaces available in PyMW is available in Section x.::
+Next, create an interface object and register it with a PyMW_Master object. These will provide the functions needed to submit tasks and get results. A list of interfaces available in PyMW is available in :doc:`PyMW Interfaces </interfaces>`::
 
 	pymw_interface = pymw.interfaces.generic.GenericInterface()
 	pymw_master = pymw.PyMW_Master(pymw_interface)
