@@ -167,6 +167,9 @@ class PyMW_Task:
 
     def __str__(self):
         return self._task_name
+
+    def __repr__(self):
+        return self._task_name
     
     def _state_data(self):
         return {"task_name": self._task_name, "executable": self._executable,
@@ -242,7 +245,7 @@ class PyMW_Task:
 class PyMW_Scheduler:
     """Takes tasks submitted by user and sends them to the master-worker interface.
     This is done in a separate thread to allow for asynchronous program execution."""
-    def __init__(self, task_queue, interface, task_match_func=None):
+    def __init__(self, task_queue, interface, task_match_func):
         self._task_queue = task_queue
         self._interface = interface
         self._running = False
@@ -308,8 +311,13 @@ class PyMW_Scheduler:
         except:
             pass
     
-    # Waits for a task to finish and free up a worker, or 1 second (whichever is first)
+    # Lets the interface know that no workers matched, and checks if it should try again immediately
+    # Otherwise, it waits until a worker has finished or 1 second has passed (whichever is first)
     def _wait_for_worker(self):
+        try:
+            if not self._interface.try_avail_check_again(): return
+        except:
+            pass
         self._interface_worker_lock.acquire()
         self._interface_worker_lock.wait(timeout=1.0)
         self._interface_worker_lock.release()
@@ -381,7 +389,7 @@ class PyMW_Scheduler:
 
 class PyMW_Master:
     """Provides functions for users to submit tasks to the underlying interface."""
-    def __init__(self, interface=None, loglevel=logging.CRITICAL, delete_files=True):
+    def __init__(self, interface=None, loglevel=logging.CRITICAL, delete_files=True, scheduler_func=None):
         logging.basicConfig(level=loglevel, format="%(asctime)s %(levelname)s %(message)s")
 
         if interface:
@@ -398,7 +406,7 @@ class PyMW_Master:
         self._task_dir_name = os.getcwd() + "/tasks"
         self._cur_task_num = 0
         self._function_source = {}
-        self.pymw_interface_modules = "cPickle", "sys", "cStringIO", "zipfile", "traceback"
+        self._pymw_interface_modules = "cPickle", "sys", "cStringIO", "zipfile", "traceback"
         self._data_file_zips = {}
         self._module_zips = {}
 
@@ -408,7 +416,7 @@ class PyMW_Master:
         except OSError, e:
             if e.errno <> errno.EEXIST: raise
 
-        self._scheduler = PyMW_Scheduler(self._queued_tasks, self._interface)
+        self._scheduler = PyMW_Scheduler(self._queued_tasks, self._interface, scheduler_func)
         atexit.register(self._cleanup, None, None)
         #signal.signal(signal.SIGKILL, self._cleanup)
     
@@ -427,9 +435,9 @@ class PyMW_Master:
             all_funcs += (self.pymw_worker_read, self.pymw_worker_write) 
 
         try:
-            interface_modules = self._interface.pymw_interface_modules
+            interface_modules = self._interface._pymw_interface_modules
         except AttributeError:
-            interface_modules = self.pymw_interface_modules
+            interface_modules = self._pymw_interface_modules
         
         # Select the function to coordinate task execution on the worker
         try:
