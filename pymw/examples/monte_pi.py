@@ -37,6 +37,8 @@ if options.interface == "generic":
     interface_obj = pymw.interfaces.generic.GenericInterface(num_workers=n_workers)
 elif options.interface == "multicore":
     interface_obj = pymw.interfaces.multicore.MulticoreInterface(num_workers=n_workers)
+elif options.interface == "multiproc":
+    interface_obj = pymw.interfaces.multicore.MultiProcInterface(num_workers=n_workers)
 elif options.interface == "mpi":
     interface_obj = pymw.interfaces.mpi.MPIInterface(num_workers=n_workers)
 elif options.interface == "condor":
