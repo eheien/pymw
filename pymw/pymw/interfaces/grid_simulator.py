@@ -26,6 +26,7 @@ class SimWorker:
 	# Simulates the worker performing cpu_secs
 	# Returns the actual wall time to complete this
 	def run_cpu(self, cpu_secs):
+		self._task_cpu_times.append(cpu_secs)
 		wall_exec_time = 0
 		while cpu_secs > 0:
 			# Calculate the speed of this worker during the interval
@@ -50,7 +51,6 @@ class SimWorker:
 		
 		self._cur_time += wall_exec_time
 		self._task_wall_times.append(wall_exec_time)
-		self._task_cpu_times.append(cpu_secs)
 		
 		return wall_exec_time
 	
@@ -163,23 +163,36 @@ class GridSimulatorInterface:
 	def get_status(self):
 		# Compute time statistics (mean, median, stddev) on tasks submitted to the interface
 		wall_times = []
+		cpu_times = []
 		for worker in self._worker_list:
 			wall_times.extend(worker._task_wall_times)
+			cpu_times.extend(worker._task_cpu_times)
 		wall_times.sort()
+		cpu_times.sort()
 		total_wall_time = reduce(lambda x, y: x+y, wall_times)
+		total_cpu_time = reduce(lambda x, y: x+y, cpu_times)
 		mean_wall_time = total_wall_time / len(wall_times)
+		mean_cpu_time = total_cpu_time / len(cpu_times)
 		median_wall_time = wall_times[len(wall_times)/2]
+		median_cpu_time = cpu_times[len(cpu_times)/2]
 		stddev_wall_time = 0
+		stddev_cpu_time = 0
 		for wall_time in wall_times:
 			stddev_wall_time += pow(mean_wall_time - wall_time, 2)
 		stddev_wall_time = pow(stddev_wall_time/len(wall_times), 0.5)
+		for cpu_time in cpu_times:
+			stddev_cpu_time += pow(mean_cpu_time - cpu_time, 2)
+		stddev_cpu_time = pow(stddev_cpu_time/len(cpu_times), 0.5)
 		
 		worker_sim_times = [worker._cur_time for worker in self._worker_list]
 		cur_sim_time = reduce(lambda x, y: max(x, y), worker_sim_times)
-		return {"num_total_workers" : self._num_workers,
-			    "num_executed_tasks" : self._num_executed_tasks, "cur_sim_time": cur_sim_time,
+		return {"num_total_workers" : self._num_workers, "num_executed_tasks" : self._num_executed_tasks,
+			    "cur_sim_time": cur_sim_time,
 			    "total_wall_time": total_wall_time, "mean_wall_time": mean_wall_time,
-			    "median_wall_time": median_wall_time, "stddev_wall_time": stddev_wall_time}
+			    "median_wall_time": median_wall_time, "stddev_wall_time": stddev_wall_time,
+			    "total_cpu_time": total_cpu_time, "mean_cpu_time": mean_cpu_time,
+			    "median_cpu_time": median_cpu_time, "stddev_cpu_time": stddev_cpu_time,
+			    }
 
 	def pymw_master_read(self, loc):
 		return None, None, None
