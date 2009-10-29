@@ -118,13 +118,24 @@ class GridSimulatorInterface:
 		self._waiting_list.sort()
 		self._num_workers += num_workers
 		
-	def read_workers_from_trace_files(self, trace_files=[]):
-		print "not yet implemented"
+	def read_workers_from_fta_tab_files(self, event_trace_file, num_workers=None):
+		if event_trace_file:
+			worker_dict = {}
+			event_trace_file.readline()      # skip the header line
+			for line in event_trace_file:
+				split_line = line.split()
+				node_id = split_line[2]
+				start_time = int(split_line[6])
+				stop_time = int(split_line[7])
+				if not worker_dict.has_key(node_id):
+					if num_workers and len(worker_dict) > num_workers: break
+					else: worker_dict[node_id] = []
+				worker_dict[node_id].append([stop_time-start_time, 1])
+		print worker_dict
 	
 	# If none of the workers matched the available tasks and there are still workers in the wait queue,
 	# advance simulation time and tell PyMW to try again
 	def try_avail_check_again(self):
-		print "no workers matched"
 		if len(self._waiting_list) == 0:
 			return False
 		
@@ -160,29 +171,26 @@ class GridSimulatorInterface:
 		self._num_executed_tasks += 1
 		task.task_finished(None)	# notify the task
 
+	# Compute statistics (mean, median, stddev) on values in the array
+	def compute_stats(self, times):
+		times.sort()
+		total_time = reduce(lambda x, y: x+y, times)
+		mean_time = total_time / len(times)
+		median_time = times[len(times)/2]
+		stddev_time = 0
+		for time_n in times:
+			stddev_time += pow(mean_time - time_n, 2)
+		stddev_time = pow(stddev_time/len(times), 0.5)
+		return total_time, mean_time, median_time, stddev_time
+		
 	def get_status(self):
-		# Compute time statistics (mean, median, stddev) on tasks submitted to the interface
 		wall_times = []
 		cpu_times = []
 		for worker in self._worker_list:
 			wall_times.extend(worker._task_wall_times)
 			cpu_times.extend(worker._task_cpu_times)
-		wall_times.sort()
-		cpu_times.sort()
-		total_wall_time = reduce(lambda x, y: x+y, wall_times)
-		total_cpu_time = reduce(lambda x, y: x+y, cpu_times)
-		mean_wall_time = total_wall_time / len(wall_times)
-		mean_cpu_time = total_cpu_time / len(cpu_times)
-		median_wall_time = wall_times[len(wall_times)/2]
-		median_cpu_time = cpu_times[len(cpu_times)/2]
-		stddev_wall_time = 0
-		stddev_cpu_time = 0
-		for wall_time in wall_times:
-			stddev_wall_time += pow(mean_wall_time - wall_time, 2)
-		stddev_wall_time = pow(stddev_wall_time/len(wall_times), 0.5)
-		for cpu_time in cpu_times:
-			stddev_cpu_time += pow(mean_cpu_time - cpu_time, 2)
-		stddev_cpu_time = pow(stddev_cpu_time/len(cpu_times), 0.5)
+		total_wall_time, mean_wall_time, median_wall_time, stddev_wall_time = self.compute_stats(wall_times)
+		total_cpu_time, mean_cpu_time, median_cpu_time, stddev_cpu_time = self.compute_stats(cpu_times)
 		
 		worker_sim_times = [worker._cur_time for worker in self._worker_list]
 		cur_sim_time = reduce(lambda x, y: max(x, y), worker_sim_times)
