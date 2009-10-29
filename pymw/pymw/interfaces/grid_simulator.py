@@ -7,6 +7,7 @@ __author__ = "Eric Heien <e-heien@ist.osaka-u.ac.jp>"
 __date__ = "2 May 2009"
 
 import errno
+import heapq
 
 # TODO: have some sort of wraparound for worker availability intervals,
 # or cleanly error out for workers that are no longer available
@@ -51,8 +52,6 @@ class SimWorker:
 		
 		self._cur_time += wall_exec_time
 		self._task_wall_times.append(wall_exec_time)
-		
-		return wall_exec_time
 	
 	# Advances the wall time of this worker by wall_secs
 	# If the worker is not available at the new time,
@@ -113,9 +112,8 @@ class GridSimulatorInterface:
 			if not new_worker.past_sim_time(0):
 				self._worker_list.append(new_worker)
 			else:
-				self._waiting_list.append(new_worker)
-			
-		self._waiting_list.sort()
+				heapq.heappush(self._waiting_list, new_worker)
+		
 		self._num_workers += num_workers
 		
 	def read_workers_from_fta_tab_files(self, event_trace_file, num_workers=None):
@@ -131,7 +129,7 @@ class GridSimulatorInterface:
 					if num_workers and len(worker_dict) > num_workers: break
 					else: worker_dict[node_id] = []
 				worker_dict[node_id].append([stop_time-start_time, 1])
-		print worker_dict
+		#print worker_dict
 	
 	# If none of the workers matched the available tasks and there are still workers in the wait queue,
 	# advance simulation time and tell PyMW to try again
@@ -145,7 +143,7 @@ class GridSimulatorInterface:
 	def get_available_workers(self):
 		# Pop workers off the sorted waiting list until cur_sim_time
 		while len(self._waiting_list) > 0 and self._waiting_list[0].past_sim_time(self._cur_sim_time):
-			self._worker_list.append(self._waiting_list.pop[0])
+			self._worker_list.append(heapq.heappop(self._waiting_list))
 		
 		return self._worker_list
 	
@@ -153,8 +151,7 @@ class GridSimulatorInterface:
 		self._worker_list.remove(worker)
 	
 	def worker_finished(self, worker):
-		self._waiting_list.append(worker)
-		self._worker_list.append(worker)
+		heapq.heappush(self._waiting_list, worker)
 	
 	def execute_task(self, task, worker):
 		if not worker:
@@ -164,17 +161,17 @@ class GridSimulatorInterface:
 		# Get the CPU seconds for the specified task and worker
 		task_exec_time = task._raw_exec(worker)
 		
-		# Run the worker for task_exec_time CPU seconds and get the wall run time
-		wall_exec_time = worker.run_cpu(task_exec_time)
-		self._waiting_list.append(worker)
-		self._waiting_list.sort()
+		# Run the worker for task_exec_time CPU seconds
+		worker.run_cpu(task_exec_time)
+		
 		self._num_executed_tasks += 1
 		task.task_finished(None)	# notify the task
 
 	# Compute statistics (mean, median, stddev) on values in the array
 	def compute_stats(self, times):
 		times.sort()
-		total_time = reduce(lambda x, y: x+y, times)
+		total_time = 0
+		for x in times: total_time += x
 		mean_time = total_time / len(times)
 		median_time = times[len(times)/2]
 		stddev_time = 0
@@ -189,11 +186,19 @@ class GridSimulatorInterface:
 		for worker in self._worker_list:
 			wall_times.extend(worker._task_wall_times)
 			cpu_times.extend(worker._task_cpu_times)
-		total_wall_time, mean_wall_time, median_wall_time, stddev_wall_time = self.compute_stats(wall_times)
-		total_cpu_time, mean_cpu_time, median_cpu_time, stddev_cpu_time = self.compute_stats(cpu_times)
+		for worker in self._waiting_list:
+			wall_times.extend(worker._task_wall_times)
+			cpu_times.extend(worker._task_cpu_times)
+		if len(wall_times) > 0:
+			total_wall_time, mean_wall_time, median_wall_time, stddev_wall_time = self.compute_stats(wall_times)
+			total_cpu_time, mean_cpu_time, median_cpu_time, stddev_cpu_time = self.compute_stats(cpu_times)
+		else:
+			total_wall_time = mean_wall_time = median_wall_time = stddev_wall_time = 0
+			total_cpu_time = mean_cpu_time = median_cpu_time = stddev_cpu_time = 0
 		
 		worker_sim_times = [worker._cur_time for worker in self._worker_list]
-		cur_sim_time = reduce(lambda x, y: max(x, y), worker_sim_times)
+		worker_sim_times.append(0)
+		cur_sim_time = max(worker_sim_times)
 		return {"num_total_workers" : self._num_workers, "num_executed_tasks" : self._num_executed_tasks,
 			    "cur_sim_time": cur_sim_time,
 			    "total_wall_time": total_wall_time, "mean_wall_time": mean_wall_time,
