@@ -278,11 +278,13 @@ class PyMW_Scheduler:
     
     # Get a list of workers available on this interface
     def _get_worker_list(self):
+        self._interface_worker_lock.acquire()
         try:
             worker_list = self._interface.get_available_workers()
             if not type(worker_list)==list: worker_list = [None]
         except:
             worker_list = [None]
+        self._interface_worker_lock.release()
         return worker_list
     
     # Match a worker from the list with a task
@@ -314,11 +316,11 @@ class PyMW_Scheduler:
     # Lets the interface know that no workers matched, and checks if it should try again immediately
     # Otherwise, it waits until a worker has finished or 1 second has passed (whichever is first)
     def _wait_for_worker(self):
+        self._interface_worker_lock.acquire()
         try:
-            if not self._interface.try_avail_check_again(): return
+            if self._interface.try_avail_check_again(): return
         except:
             pass
-        self._interface_worker_lock.acquire()
         self._interface_worker_lock.wait(timeout=1.0)
         self._interface_worker_lock.release()
     
