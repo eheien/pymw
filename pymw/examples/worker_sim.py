@@ -2,7 +2,7 @@
 
 from pymw import *
 import random
-import profile
+import cProfile
 import pstats
 
 # Select a worker and task from each list to be matched together
@@ -12,16 +12,17 @@ def worker_scheduler(task_list, worker_list):
 
 # Worker speed is the number of instructions a worker can perform per second
 # In this case, worker speeds are a normal distribution with mean 2 and stddev 0.3, with a minimum speed of 1
-def worker_speed():
-    return max(1, random.normalvariate(2, 0.3))
+def worker_speed(worker_num):
+    return max(1, random.normalvariate(2, 9))
 
 # Generate worker availabilities
 # Worker availabilities are a list of pairs, each pair is a time span and availability A from 0 to 1
 # This means that for the time span, the worker runs at A*(normal speed)
 # In this case, workers oscillate on and off every 100 seconds and shut down after 10000 seconds
-def worker_avail():
-    avail_list = [[100, i%2] for i in range(100)]
-    return avail_list
+def worker_avail(worker_num):
+    avail_lens = [100 for i in range(100000)]
+    avail_fracs = [i%2 for i in range(100000)]
+    return avail_lens, avail_fracs
 
 # Task lengths are in terms of number of instructions
 # In this case short tasks are uniformly distributed in [15, 30] and long tasks are in [60, 90]
@@ -56,7 +57,6 @@ def run_everything():
     print stats
 
 run_everything()
-#profile.run('run_everything()', 'fooprof')
+#cProfile.run('run_everything()', 'fooprof')
 #p = pstats.Stats('fooprof')
 #p.sort_stats('time').print_stats()
-exit()
