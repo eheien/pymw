@@ -96,7 +96,6 @@ class SimWorker:
 class GridSimulatorInterface:
 	def __init__(self, trace_files=[]):
 		self._cur_sim_time = 0
-		self._num_workers = 0
 		self._num_executed_tasks = 0
 		self._worker_list = []
 		self._waiting_list = []
@@ -113,8 +112,6 @@ class GridSimulatorInterface:
 				self._worker_list.append(new_worker)
 			else:
 				heapq.heappush(self._waiting_list, new_worker)
-		
-		self._num_workers += num_workers
 		
 	def read_workers_from_fta_tab_files(self, event_trace_file, num_workers=None):
 		if event_trace_file:
@@ -155,8 +152,7 @@ class GridSimulatorInterface:
 	
 	def execute_task(self, task, worker):
 		if not worker:
-			task.task_finished(Exception("Cannot use NULL worker"))
-			return
+			raise Exception("Cannot use NULL worker")
 		
 		# Get the CPU seconds for the specified task and worker
 		task_exec_time = task._raw_exec(worker)
@@ -199,7 +195,8 @@ class GridSimulatorInterface:
 		worker_sim_times = [worker._cur_time for worker in self._worker_list]
 		worker_sim_times.append(0)
 		cur_sim_time = max(worker_sim_times)
-		return {"num_total_workers" : self._num_workers, "num_executed_tasks" : self._num_executed_tasks,
+		num_workers = len(self._worker_list) + len(self._waiting_list)
+		return {"num_total_workers" : num_workers, "num_executed_tasks" : self._num_executed_tasks,
 			    "cur_sim_time": cur_sim_time,
 			    "total_wall_time": total_wall_time, "mean_wall_time": mean_wall_time,
 			    "median_wall_time": median_wall_time, "stddev_wall_time": stddev_wall_time,
