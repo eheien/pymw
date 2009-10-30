@@ -278,13 +278,11 @@ class PyMW_Scheduler:
     
     # Get a list of workers available on this interface
     def _get_worker_list(self):
-        self._interface_worker_lock.acquire()
         try:
             worker_list = self._interface.get_available_workers()
             if not type(worker_list)==list: worker_list = [None]
         except:
             worker_list = [None]
-        self._interface_worker_lock.release()
         return worker_list
     
     # Match a worker from the list with a task
@@ -316,13 +314,11 @@ class PyMW_Scheduler:
     # Lets the interface know that no workers matched, and checks if it should try again immediately
     # Otherwise, it waits until a worker has finished or 1 second has passed (whichever is first)
     def _wait_for_worker(self):
-        self._interface_worker_lock.acquire()
         try:
             if self._interface.try_avail_check_again(): return
         except:
             pass
         self._interface_worker_lock.wait(timeout=1.0)
-        self._interface_worker_lock.release()
     
     # Scheduler logic:
     # While there are tasks on the queue
@@ -344,11 +340,18 @@ class PyMW_Scheduler:
         # NOTE: assumes that only the scheduler thread will remove tasks from the list
         # only the scheduler thread will call reserve_worker, and there is only one scheduler thread
         while self._should_scheduler_run():
+            # Hold the interface lock until we have a worker, matched it with a task and
+            # reserved it with the interface.  Otherwise we may select the same worker twice
+            # or other problems can occur
+            
+            self._interface_worker_lock.acquire()
+            
             # Get a list of available workers and tasks
             # If none are available, then wait a little and try again
             worker_list = self._get_worker_list()
             if len(worker_list) == 0:
                 self._wait_for_worker()
+                self._interface_worker_lock.release()
                 continue
             task_list = self._task_queue.get_data()
             
@@ -358,10 +361,12 @@ class PyMW_Scheduler:
             matched_task, matched_worker = self._match_worker_and_task(task_list, worker_list)
             if not matched_task:
                 self._wait_for_worker()
+                self._interface_worker_lock.release()
                 continue
             
             # Confirm the match and reserve the task and worker
             self._reserve_task_worker(matched_task, matched_worker)
+            self._interface_worker_lock.release()
             
             # Wait until other tasks have been submitted and the thread count decreases,
             # otherwise we might pass the process resource limitations
@@ -619,10 +624,12 @@ class PyMW_Master:
         return task_progress
         
     def get_status(self):
+        self._scheduler._interface_worker_lock.acquire()
         try:
             status = self._interface.get_status()
         except:
             status = {"interface_status": "error"}
+        self._scheduler._interface_worker_lock.release()
         if not type(status)==dict: status = {"interface_status": "error"}
         status["tasks"] = self._submitted_tasks
         return status
