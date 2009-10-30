@@ -8,15 +8,19 @@ __date__ = "2 May 2009"
 
 import errno
 import heapq
+import array
 
 # TODO: have some sort of wraparound for worker availability intervals,
 # or cleanly error out for workers that are no longer available
 
 class SimWorker:
-	def __init__(self, worker_name, worker_speed, worker_avail):
+	def __init__(self, worker_name, worker_speed, worker_avail_lens, worker_avail_fracs):
 		self._name = worker_name
 		self._speed = worker_speed
-		self._avail = worker_avail
+		self._avail_lens = array.ArrayType('f')
+		self._avail_fracs = array.ArrayType('f')
+		self._avail_lens.fromlist(worker_avail_lens)
+		self._avail_fracs.fromlist(worker_avail_fracs)
 		self._avail_ind = 0
 		self._cur_time = 0
 		self._sub_avail_time = 0
@@ -31,9 +35,9 @@ class SimWorker:
 		wall_exec_time = 0
 		while cpu_secs > 0:
 			# Calculate the speed of this worker during the interval
-			worker_int_speed = self._avail[self._avail_ind][1] * self._speed
+			worker_int_speed = self._avail_fracs[self._avail_ind] * self._speed
 			# Determine the remaining length of this interval
-			int_remaining_secs = self._avail[self._avail_ind][0] - self._sub_avail_time
+			int_remaining_secs = self._avail_lens[self._avail_ind] - self._sub_avail_time
 			# Determine the available CPU seconds in this interval
 			int_cpu_secs = int_remaining_secs * worker_int_speed
 			# If we won't finish the task in this interval
@@ -60,7 +64,7 @@ class SimWorker:
 		rem_secs = wall_secs
 		# Advance the availablity interval pointer until we've passed wall_secs
 		while rem_secs > 0:
-			int_remaining_secs = self._avail[self._avail_ind][0] - self._sub_avail_time
+			int_remaining_secs = self._avail_lens[self._avail_ind] - self._sub_avail_time
 			if int_remaining_secs < rem_secs:
 				rem_secs -= int_remaining_secs
 				self._sub_avail_time = 0
@@ -71,8 +75,8 @@ class SimWorker:
 		
 		# Advance until we're in an available state
 		additional_secs = 0
-		while self._avail[self._avail_ind][1] == 0:
-			additional_secs += self._avail[self._avail_ind][0] - self._sub_avail_time
+		while self._avail_fracs[self._avail_ind] == 0:
+			additional_secs += self._avail_lens[self._avail_ind] - self._sub_avail_time
 			self._avail_ind += 1
 			self._sub_avail_time = 0
 		
@@ -103,8 +107,8 @@ class GridSimulatorInterface:
 	def generate_workers(self, num_workers, speed_func, avail_func):
 		for i in range(num_workers):
 			new_worker_speed = speed_func()
-			new_worker_avail = avail_func()
-			new_worker = SimWorker("W"+str(i), new_worker_speed, new_worker_avail)
+			new_worker_avail_lens, new_worker_avail_fracs = avail_func()
+			new_worker = SimWorker("W"+str(i), new_worker_speed, new_worker_avail_lens, new_worker_avail_fracs)
 			# Advance the new worker to its first available time
 			new_worker.advance_wall_time(0)
 			# If the new worker isn't available at the start, put it on the waiting list
