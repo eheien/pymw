@@ -104,18 +104,21 @@ class GridSimulatorInterface:
 		self._worker_list = []
 		self._waiting_list = []
 	
+	def add_worker(self, worker):
+		# Advance the new worker to its first available time
+		worker.advance_wall_time(0)
+		# If the new worker isn't available at the start, put it on the waiting list
+		if not worker.past_sim_time(0):
+			self._worker_list.append(worker)
+		else:
+			heapq.heappush(self._waiting_list, worker)
+		
 	def generate_workers(self, num_workers, speed_func, avail_func):
-		for i in range(num_workers):
-			new_worker_speed = speed_func()
-			new_worker_avail_lens, new_worker_avail_fracs = avail_func()
-			new_worker = SimWorker("W"+str(i), new_worker_speed, new_worker_avail_lens, new_worker_avail_fracs)
-			# Advance the new worker to its first available time
-			new_worker.advance_wall_time(0)
-			# If the new worker isn't available at the start, put it on the waiting list
-			if not new_worker.past_sim_time(0):
-				self._worker_list.append(new_worker)
-			else:
-				heapq.heappush(self._waiting_list, new_worker)
+		for wnum in range(num_workers):
+			new_worker_speed = speed_func(wnum)
+			new_worker_avail_lens, new_worker_avail_fracs = avail_func(wnum)
+			new_worker = SimWorker("W"+str(wnum), new_worker_speed, new_worker_avail_lens, new_worker_avail_fracs)
+			self.add_worker(new_worker)
 		
 	def read_workers_from_fta_tab_files(self, event_trace_file, num_workers=None):
 		if event_trace_file:
@@ -123,14 +126,21 @@ class GridSimulatorInterface:
 			event_trace_file.readline()      # skip the header line
 			for line in event_trace_file:
 				split_line = line.split()
-				node_id = split_line[2]
-				start_time = int(split_line[6])
-				stop_time = int(split_line[7])
+				node_id, start_time, stop_time = split_line[2], float(split_line[6]), float(split_line[7])
 				if not worker_dict.has_key(node_id):
-					if num_workers and len(worker_dict) > num_workers: break
+					if num_workers and len(worker_dict) >= num_workers: break
 					else: worker_dict[node_id] = []
-				worker_dict[node_id].append([stop_time-start_time, 1])
-		#print worker_dict
+				worker_dict[node_id].append([start_time, stop_time])
+		
+		for worker_id in worker_dict:
+			avail_lens = []
+			avail_fracs = []
+			worker_times = worker_dict[worker_id]
+			last_interval_end = 0
+			for int_time in worker_times:
+				interval_length = int_time[0] - start_time
+				start_time = int_time[1]
+			#print worker_id, worker_times
 	
 	# If none of the workers matched the available tasks and there are still workers in the wait queue,
 	# advance simulation time and tell PyMW to try again
