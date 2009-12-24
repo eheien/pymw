@@ -8,7 +8,8 @@ import logging
 import boinc_setup
 
 
-__author__ = "Adam Kornafeld <kadam@sztaki.hu>"
+__author__ = ["Adam Kornafeld <kadam@sztaki.hu>",
+              "Jeremy Cowles <jeremy.cowles@gmail.com", ]
 __date__ = "10 April 2008"
 
 
@@ -135,9 +136,9 @@ class BOINCInterface:
                     # just in case a higher-level process is hiding exceptions
                     # log any exception that occures and then re-raise it
                     logging.critical("BOINCInterface._get_finished_tasks" + \
-                                     " failed: %s" % data)
-                    self._result_checker_running = False
-                    raise
+                                     " error [but stil running]: %s" % data)
+                    #self._result_checker_running = False
+                    #raise
             finally:
                 self._task_list_lock.release()
             
