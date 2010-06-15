@@ -22,7 +22,9 @@ import types
 import zipfile
 import interfaces.generic
 import interfaces.multicore
+import interfaces.multiproc
 import interfaces.mpi
+import interfaces.ganga
 import interfaces.condor
 import interfaces.boinc
 import interfaces.grid_simulator
