@@ -2,11 +2,11 @@
 """Provide a top level interface for master worker computing.
 """
 
-__author__ = "Eric Heien <e-heien@ist.osaka-u.ac.jp>"
+__author__ = "Eric Heien <pymw@heien.org>"
 __date__ = "10 April 2008"
 
 import atexit
-import cPickle
+import pickle
 import errno
 import logging
 import inspect
@@ -128,7 +128,7 @@ class PyMW_Task:
                  input_data=None, input_arg=None, output_arg=None, file_loc="tasks",
                  data_file_zip=None, modules_file_zip=None, file_input=False, raw_exec=None):
         # Make sure executable is valid
-        if not isinstance(executable, types.StringType) and not isinstance(executable, types.FunctionType):
+        if not isinstance(executable, bytes) and not isinstance(executable, types.FunctionType):
             raise TypeError("executable must be a filename or Python function")
         
         self._finished_queue = finished_queue
@@ -198,7 +198,7 @@ class PyMW_Task:
                 self._output_data=[]
                 for file in result:
                     f=open(file[0],"r")
-                    self._output_data.append(cPickle.loads(f.read()))
+                    self._output_data.append(pickle.loads(f.read()))
             except:
                 self._output_data = result
             logging.info("Task "+str(self)+" finished")
@@ -390,7 +390,7 @@ class PyMW_Scheduler:
         try:
             next_task._times["execute_time"] = time.time()
             execute_task_func(next_task, worker)
-        except Exception, e:
+        except Exception as e:
             next_task.task_finished(e)
     
     def _exit(self):
@@ -415,15 +415,15 @@ class PyMW_Master:
         self._task_dir_name = os.getcwd() + "/tasks"
         self._cur_task_num = 0
         self._function_source = {}
-        self._pymw_interface_modules = "cPickle", "sys", "cStringIO", "zipfile", "traceback"
+        self._pymw_interface_modules = "pickle", "sys", "cStringIO", "zipfile", "traceback"
         self._data_file_zips = {}
         self._module_zips = {}
 
         # Make the directory for input/output files, if it doesn't already exist
         try:
             os.mkdir(self._task_dir_name)
-        except OSError, e:
-            if e.errno <> errno.EEXIST: raise
+        except OSError as e:
+            if e.errno != errno.EEXIST: raise
 
         self._scheduler = PyMW_Scheduler(self._queued_tasks, self._interface, scheduler_func)
         atexit.register(self._cleanup, None, None)
@@ -456,9 +456,9 @@ class PyMW_Master:
         
         # Get the source code for the necessary functions
         func_hash = hash(all_funcs)
-        if not self._function_source.has_key(func_hash):
+        if func_hash not in self._function_source:
             func_sources = [textwrap.dedent(inspect.getsource(func)) for func in all_funcs]
-            self._function_source[func_hash] = [main_func.func_name, func_sources, file_name]
+            self._function_source[func_hash] = [main_func.__name__, func_sources, file_name]
         else:
             return
 
@@ -482,10 +482,10 @@ class PyMW_Master:
         
         file_hash = hash(data_files)
         if is_modules:
-            if self._module_zips.has_key(file_hash):
+            if file_hash in self._module_zips:
                 return self._module_zips[file_hash]
         else:
-            if self._data_file_zips.has_key(file_hash):
+            if file_hash in self._data_file_zips:
                 return self._data_file_zips[file_hash]
         
         # TODO: this is insecure, try to use the arch_fd in creating the Zipfile object
@@ -533,9 +533,9 @@ class PyMW_Master:
         executable can be either a filename (Python script) or a function."""
         
         # Check if the executable is a Python function or a script
-        if callable(executable):
-            task_name = str(executable.func_name)+"_"+self._start_time_str+"_"+str(self._cur_task_num)
-            exec_file_name = self._task_dir_name+"/"+str(executable.func_name)+"_"+self._start_time_str+".py"
+        if hasattr(executable, '__call__'):
+            task_name = str(executable.__name__)+"_"+self._start_time_str+"_"+str(self._cur_task_num)
+            exec_file_name = self._task_dir_name+"/"+str(executable.__name__)+"_"+self._start_time_str+".py"
         elif isinstance(executable, str):
             # TODO: test here for existence of script
             task_name = str(executable)+"_"+self._start_time_str+"_"+str(self._cur_task_num)
@@ -562,7 +562,7 @@ class PyMW_Master:
             mod_arch_file_name = None
         
         # Setup the necessary files
-        if callable(executable):
+        if hasattr(executable, '__call__'):
             self._setup_exec_file(exec_file_name, executable, modules, dep_funcs, input_from_file, zip_arch_file_name)
         
         try:
@@ -675,24 +675,24 @@ class PyMW_Master:
 
     def pymw_master_read(self, loc):
         infile = open(loc, 'r')
-        obj = cPickle.Unpickler(infile).load()
+        obj = pickle.Unpickler(infile).load()
         infile.close()
         return obj
     
     def pymw_master_write(self, output, loc):
         outfile = open(loc, 'w')
-        cPickle.Pickler(outfile).dump(output)
+        pickle.Pickler(outfile).dump(output)
         outfile.close()
     
     def pymw_worker_read(options):
         infile = open(sys.argv[1], 'r')
-        obj = cPickle.Unpickler(infile).load()
+        obj = pickle.Unpickler(infile).load()
         infile.close()
         return obj
 
     def pymw_worker_write(output, options):
         outfile = open(sys.argv[2], 'w')
-        cPickle.Pickler(outfile).dump(output)
+        pickle.Pickler(outfile).dump(output)
         outfile.close()
 
     def pymw_set_progress(prog_ratio):
@@ -733,7 +733,7 @@ class PyMW_Master:
             # The interface is responsible for cleanup, so don't bother deleting the archive files
             # TODO: modify this to deal with other options (multiple results, etc)
             pymw_worker_write([_res_array[0], out_str, err_str], options)
-        except Exception, e:
+        except Exception as e:
             sys.stdout = old_stdout
             sys.stderr = old_stderr
             traceback.print_exc()
@@ -759,7 +759,7 @@ class PyMW_MapReduce:
         q2=len(data)%num
         res=[]
         p=0
-        for i in xrange(num):
+        for i in range(num):
             j=0
             if q2>0:
                 j=1
@@ -770,7 +770,7 @@ class PyMW_MapReduce:
 
         
     def submit_task_mapreduce(self, exec_map, exec_reduce, num_worker=1, input_data=None, modules=(), dep_funcs=(), red_worker=-1, file_input=False):
-        task_name = str(exec_map.func_name)+"_"+str(exec_reduce.func_name)+"_MR"
+        task_name = str(exec_map.__name__)+"_"+str(exec_reduce.__name__)+"_MR"
         exec_file_name = self._task_dir_name+"/"+task_name
         
         try:
@@ -800,7 +800,7 @@ class PyMW_MapReduce:
             size=0
             for i in input_data: size+=os.path.getsize(i[0])
             size_list=[]
-            for i in self._data_split(range(size),num_worker): size_list.append(i[-1]+1-i[0])
+            for i in self._data_split(list(range(size)),num_worker): size_list.append(i[-1]+1-i[0])
             size_num=0
             rest=size_list[size_num]
             split_data, data_block = [],[]
@@ -826,7 +826,7 @@ class PyMW_MapReduce:
         
         reducetasks = []
         res_list=[]
-        for i in xrange(len(maptasks)):
+        for i in range(len(maptasks)):
             res_task,result = self._master.get_result(maptasks)
             maptasks.remove(res_task)
             if red_worker==-1: # map_num == reduce_num
@@ -836,11 +836,11 @@ class PyMW_MapReduce:
         
         if red_worker!=-1: # map_num > reduce_num
             res_split=self._data_split(res_list, red_worker)
-            for i in xrange(red_worker):
+            for i in range(red_worker):
                 reducetasks.append(self._master.submit_task(exec_reduce, input_data=(res_split[i],), modules=modules, dep_funcs=dep_funcs, input_from_file=file_input))
 
         result_list = []
-        for i in xrange(len(reducetasks)):
+        for i in range(len(reducetasks)):
             res_task,result = self._master.get_result(reducetasks)
             reducetasks.remove(res_task)
             result_list.append(result)
