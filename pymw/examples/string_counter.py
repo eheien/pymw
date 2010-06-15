@@ -14,9 +14,10 @@ def count_num_strs(search_str):
     return char_count
 
 parser = OptionParser(usage="usage: %prog")
-parser.add_option("-i", "--interface", dest="interface", default="generic", help="specify the interface (generic/multicore/mpi/condor/boinc)", metavar="INTERFACE")
+parser.add_option("-i", "--interface", dest="interface", default="generic", help="specify the interface (generic/multicore/mpi/ganga/condor/boinc)", metavar="INTERFACE")
 parser.add_option("-n", "--num_workers", dest="n_workers", default="4", help="number of workers", metavar="N")
 parser.add_option("-t", "--num_tests", dest="n_tests", default="1000000", help="number of Monte Carlo tests to perform", metavar="N")
+parser.add_option("-g", "--ganga_loc", dest="g_loc", default="~/Ganga/bin/ganga", help="directory of GANGA executable (GANGA interface)", metavar="FILE")
 parser.add_option("-p", "--project_home", dest="p_home", default="", help="directory of the project (BOINC interface)", metavar="DIR")
 options, args = parser.parse_args()
 
@@ -28,6 +29,8 @@ if options.interface == "generic":
     interface_obj = pymw.interfaces.generic.GenericInterface(num_workers=n_workers)
 elif options.interface == "multicore":
     interface_obj = pymw.interfaces.multicore.MulticoreInterface(num_workers=n_workers)
+elif options.interface == "ganga":
+    interface_obj = pymw.interfaces.ganga.GANGAInterface(ganga_loc=options.g_loc)
 elif options.interface == "boinc":
     interface_obj = pymw.interfaces.boinc.BOINCInterface(project_home=options.p_home)
 else:

@@ -46,10 +46,11 @@ def prime_range_check(lower_bound, upper_bound):
     return primes
 
 parser = OptionParser(usage="usage: %prog")
-parser.add_option("-i", "--interface", dest="interface", default="generic", help="specify the interface (generic/multicore/mpi/condor/boinc)", metavar="INTERFACE")
+parser.add_option("-i", "--interface", dest="interface", default="generic", help="specify the interface (generic/multicore/mpi/ganga/condor/boinc)", metavar="INTERFACE")
 parser.add_option("-n", "--num_workers", dest="n_workers", default="4", help="number of workers", metavar="N")
 parser.add_option("-r", "--min_val", dest="min_val", default="1", help="minimum value to check", metavar="N")
 parser.add_option("-s", "--max_val", dest="max_val", default="10000", help="maximum value to check", metavar="N")
+parser.add_option("-g", "--ganga_loc", dest="g_loc", default="~/Ganga/bin/ganga", help="directory of GANGA executable (GANGA interface)", metavar="FILE")
 parser.add_option("-p", "--project_home", dest="p_home", default="", help="directory of the project (BOINC interface)", metavar="DIR")
 options, args = parser.parse_args()
 
@@ -65,13 +66,15 @@ elif options.interface == "mpi":
     interface_obj = pymw.interfaces.mpi.MPIInterface(num_workers=n_workers)
 elif options.interface == "condor":
     interface_obj = pymw.interfaces.condor.CondorInterface()
+elif options.interface == "ganga":
+    interface_obj = pymw.interfaces.ganga.GANGAInterface(ganga_loc=options.g_loc)
 elif options.interface == "boinc":
     interface_obj = pymw.interfaces.boinc.BOINCInterface(project_home=options.p_home)
 else:
     print "Interface", options.interface, "unknown."
     exit()
 
-num_tasks = n_workers*3
+num_tasks = n_workers
 pymw_master = pymw.PyMW_Master(interface=interface_obj)
 
 post_init_time = time.time()
