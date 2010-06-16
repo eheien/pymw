@@ -2,7 +2,7 @@
 """Provide an MPI interface for master worker computing with PyMW.
 """
 
-__author__ = "Eric Heien <e-heien@ist.osaka-u.ac.jp>"
+__author__ = "Eric Heien <pymw@heien.org>"
 __date__ = "10 April 2008"
 
 import sys
@@ -31,9 +31,9 @@ class MPIInterface:
     def execute_task(self, task, worker):
         cmd = [task._executable, task._input_arg, task._output_arg]
         self._child_comm.send(cmd, dest=worker, tag=0)
-        print "Master sent cmd to", worker
+        print(("Master sent cmd to", worker))
         res = self._child_comm.recv(source=worker, tag=1)
-        print "Master got response", res, "from", worker
+        print(("Master got response", res, "from", worker))
         task.task_finished()
     
     def _cleanup(self):

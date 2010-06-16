@@ -2,7 +2,7 @@
 """Provide a generic multicore interface for master worker computing with PyMW.
 """
 
-__author__ = "Eric Heien <e-heien@ist.osaka-u.ac.jp>"
+__author__ = "Eric Heien <pymw@heien.org>"
 __date__ = "22 February 2009"
 
 import subprocess

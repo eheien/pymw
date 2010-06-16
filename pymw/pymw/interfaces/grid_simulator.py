@@ -3,7 +3,7 @@
 Thanks to Derrick Kondo for the idea.
 """
 
-__author__ = "Eric Heien <e-heien@ist.osaka-u.ac.jp>"
+__author__ = "Eric Heien <pymw@heien.org>"
 __date__ = "2 May 2009"
 
 import errno
@@ -127,7 +127,7 @@ class GridSimulatorInterface:
 			for line in event_trace_file:
 				split_line = line.split()
 				node_id, start_time, stop_time = split_line[2], float(split_line[6]), float(split_line[7])
-				if not worker_dict.has_key(node_id):
+				if node_id not in worker_dict:
 					if num_workers and len(worker_dict) >= num_workers: break
 					else: worker_dict[node_id] = []
 				worker_dict[node_id].append([start_time, stop_time])
@@ -140,7 +140,7 @@ class GridSimulatorInterface:
 			for int_time in worker_times:
 				interval_length = int_time[0] - start_time
 				start_time = int_time[1]
-			#print worker_id, worker_times
+			#print((worker_id, worker_times))
 	
 	# If none of the workers matched the available tasks and there are still workers in the wait queue,
 	# advance simulation time and tell PyMW to try again

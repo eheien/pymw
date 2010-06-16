@@ -2,14 +2,14 @@
 """Provide a Condor interface for master worker computing with PyMW.
 """
 
-__author__ = "Eric Heien <e-heien@ics.es.osaka-u.ac.jp>"
+__author__ = "Eric Heien <pymw@heien.org>"
 __date__ = "22 February 2009"
 
 import subprocess
 import os
 import time
 import sys
-import cPickle
+import pickle
 import threading
 
 CONDOR_TEMPLATE = """Universe = vanilla
@@ -42,7 +42,7 @@ class CondorInterface:
         self._task_list = []
         self._task_list_lock = threading.Lock()
         self._result_checker_running = False
-        self.pymw_interface_modules = "cPickle", "sys"
+        self.pymw_interface_modules = "pickle", "sys"
         
     def _get_finished_tasks(self):
         while True:
@@ -130,8 +130,8 @@ class CondorInterface:
 
     # Worker I/O functions to read/write to stdio
     def pymw_worker_read(options):
-        obj = cPickle.Unpickler(sys.stdin).load()
+        obj = pickle.Unpickler(sys.stdin).load()
         return obj
     
     def pymw_worker_write(output, options):
-        print cPickle.dumps(output)
+        print((pickle.dumps(output)))

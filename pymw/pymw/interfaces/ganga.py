@@ -10,7 +10,7 @@ import os
 import time
 import sys
 import shutil
-import cPickle
+import pickle
 import threading
 
 GANGA_TEMPLATE = """j = Job(name = 'PyMW Worker')
@@ -38,7 +38,7 @@ class GANGAInterface:
         self._task_list = []
         self._task_list_lock = threading.Lock()
         self._result_checker_running = False
-        self.pymw_interface_modules = "cPickle", "sys", "traceback", "cStringIO"
+        self.pymw_interface_modules = "pickle", "sys", "traceback", "cStringIO"
         
     def _get_finished_tasks(self):
         while True:
@@ -58,10 +58,10 @@ class GANGAInterface:
                     if len(self._task_list) == 0:
                         self._result_checker_running = False
                         return
-                except Exception, data:
+                except Exception as data:
                     # just in case a higher-level process is hiding exceptions
                     # log any exception that occures and then re-raise it
-                    print "GANGAInterface._get_finished_tasks failed: %s" % data
+                    print(("GANGAInterface._get_finished_tasks failed: %s" % data))
                     self._result_checker_running = False
                     raise
                 #end try

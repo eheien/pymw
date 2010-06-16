@@ -77,9 +77,9 @@ def get_winworker_path():
     paths = [p for p in sys.path[1:] if 'site-packages' in p]
     if len(paths) > 0:
         for cur_path in paths:
-            print "found site-packages", cur_path
+            print (("found site-packages", cur_path))
             path = os.path.join(cur_path, WINDOWS_WORKER)
-            print path
+            print (path)
             if os.path.exists(path):
                 return path
 

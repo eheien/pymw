@@ -132,7 +132,7 @@ class BOINCInterface:
                     if len(self._task_list) == 0:
                         self._result_checker_running = False
                         return
-                except Exception, data:
+                except Exception as data:
                     # just in case a higher-level process is hiding exceptions
                     # log any exception that occures and then re-raise it
                     logging.critical("BOINCInterface._get_finished_tasks" + \

@@ -2,22 +2,21 @@
 """Provide an interface using the multiprocessing module available in Python 2.6.
 """
 
-__author__ = "Eric Heien <e-heien@ist.osaka-u.ac.jp>"
+__author__ = "Eric Heien <pymw@heien.org>"
 __date__ = "28 October 2009"
 
 import multiprocessing
-import cPickle
+import pickle
 import sys
 import tempfile
 import shutil
 import traceback
-import cStringIO
 
 def worker_main(conn_pipe):
 	while True:
 		conn_pipe.poll(None)  # Wait for the next task
 		args = conn_pipe.recv()
-		execfile(args[0])
+		exec(open(args[0]).read())
 		conn_pipe.send("done")
 
 class MultiProcInterface:

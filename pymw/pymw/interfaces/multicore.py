@@ -2,7 +2,7 @@
 """Provide a multicore interface for master worker computing with PyMW.
 """
 
-__author__ = "Eric Heien <e-heien@ist.osaka-u.ac.jp>"
+__author__ = "Eric Heien <pymw@heien.org>"
 __date__ = "22 February 2009"
 
 # NOTE: if anyone has an error with zip files on this interface, please contact the PyMW authors
@@ -13,8 +13,7 @@ import ctypes
 import os
 import signal
 import errno
-import cPickle
-import cStringIO
+import pickle
 import tempfile
 import shutil
 
@@ -47,7 +46,7 @@ class MulticoreInterface:
         self._python_loc = python_loc
         self._input_objs = {}
         self._output_objs = {}
-        self.pymw_interface_modules = "cPickle", "sys", "cStringIO"
+        self.pymw_interface_modules = "pickle", "sys"
         for worker_num in range(num_workers):
             w = Worker()
             self._available_worker_list.append(w)
@@ -70,7 +69,7 @@ class MulticoreInterface:
         if task._data_file_zip: shutil.copy(task._data_file_zip, worker._worker_dir)
         
         # Pickle the input argument and remove it from the list
-        input_obj_str = cPickle.dumps(self._input_objs[task._input_arg])
+        input_obj_str = pickle.dumps(self._input_objs[task._input_arg])
 
         worker._exec_process = subprocess.Popen(args=[self._python_loc, task._executable, task._input_arg, task._output_arg],
                                                 creationflags=cf, stdin=subprocess.PIPE,
@@ -79,7 +78,7 @@ class MulticoreInterface:
         proc_stdout, proc_stderr = worker._exec_process.communicate(input_obj_str)
         retcode = worker._exec_process.returncode
         if retcode is 0:
-            self._output_objs[task._output_arg] = cPickle.loads(proc_stdout)
+            self._output_objs[task._output_arg] = pickle.loads(proc_stdout)
             if task._file_input==True:
                 self._output_objs[task._output_arg][0]=[task._output_arg]
         else:
@@ -104,15 +103,15 @@ class MulticoreInterface:
     	self._input_objs[loc] = output
     
     def pymw_worker_read(options):
-        return cPickle.Unpickler(sys.stdin).load()
+        return pickle.Unpickler(sys.stdin).load()
     
     def pymw_worker_write(output, options):
         if "file_input" in options:
             outfile = open(sys.argv[2], 'w')
-            cPickle.Pickler(outfile).dump(output[0])
+            pickle.Pickler(outfile).dump(output[0])
             outfile.close()
             output[0]=None
-        print cPickle.dumps(output)
+        print((pickle.dumps(output)))
 
     def pymw_worker_func(func_name_to_call, options):
         # Get the input data
@@ -124,7 +123,7 @@ class MulticoreInterface:
             try:
                 for i in input_data[0]:
                     f=open(i,"r")
-                    filedata+=cPickle.loads(f.read())
+                    filedata+=pickle.loads(f.read())
             except:
                 for i in input_data[0]:
                     f=open(i[0],"r")
