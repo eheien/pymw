@@ -33,13 +33,13 @@ elif options.interface == "ganga":
 elif options.interface == "boinc":
     interface_obj = pymw.interfaces.boinc.BOINCInterface(project_home=options.p_home)
 else:
-    print "Interface", options.interface, "unknown."
+    print(("Interface", options.interface, "unknown."))
     exit()
 
 pymw_master = pymw.PyMW_Master(interface=interface_obj)
 
 post_init_time = time.time()
-tasks = [pymw_master.submit_task(null_worker, input_data=(range(task_size*256),)) for i in range(n_tasks)]
+tasks = [pymw_master.submit_task(null_worker, input_data=(list(range(task_size*256)),)) for i in range(n_tasks)]
 
 for task in tasks:
     res_task, res = pymw_master.get_result(task)
@@ -47,13 +47,13 @@ for task in tasks:
 end_time = time.time()
 total_io = 2*task_size*n_tasks/1024.0
 
-print "Number of workers:", str(n_workers)
-print "Number of tasks:", str(n_tasks)
-print "Size per task:", str(task_size), "kilobytes"
-print "Initialization time:", str(post_init_time-start_time)
-print "Calculation time:", str(end_time-post_init_time)
-print "Total time:", str(end_time-start_time)
-print "Calculation time per task:", str((end_time-post_init_time)/n_tasks)
-print "Total time per task:", str((end_time-start_time)/n_tasks)
-print "Total I/O:", str(total_io), "megabytes"
-print "I/O rate:", str(total_io/(end_time-post_init_time)), "MB/sec"
+print(("Number of workers:", str(n_workers)))
+print(("Number of tasks:", str(n_tasks)))
+print(("Size per task:", str(task_size), "kilobytes"))
+print(("Initialization time:", str(post_init_time-start_time)))
+print(("Calculation time:", str(end_time-post_init_time)))
+print(("Total time:", str(end_time-start_time)))
+print(("Calculation time per task:", str((end_time-post_init_time)/n_tasks)))
+print(("Total time per task:", str((end_time-start_time)/n_tasks)))
+print(("Total I/O:", str(total_io), "megabytes"))
+print(("I/O rate:", str(total_io/(end_time-post_init_time)), "MB/sec"))

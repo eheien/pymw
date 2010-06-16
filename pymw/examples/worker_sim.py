@@ -54,7 +54,7 @@ def run_everything():
     # Print the final run statistics    
     stats = pymw_master.get_status()
     del stats["tasks"]
-    print stats
+    print(stats)
 
 run_everything()
 #cProfile.run('run_everything()', 'fooprof')

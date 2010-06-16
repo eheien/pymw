@@ -30,7 +30,6 @@ def crossover(ind1, ind2):
     
     return new_ind1, new_ind2
 
-
 parser = OptionParser(usage="usage: %prog")
 parser.add_option("-i", "--interface", dest="interface", default="generic", help="specify the interface (multicore/mpi/boinc)", metavar="INTERFACE")
 parser.add_option("-n", "--num_workers", dest="n_workers", default="1", help="number of workers", metavar="N")
@@ -55,7 +54,7 @@ elif options.interface == "mpi":
 elif options.interface == "boinc":
     interface_obj = pymw.interfaces.boinc.BOINCInterface(project_home=options.p_home)
 else:
-    print "Interface", options.interface, "unknown."
+    print(("Interface", options.interface, "unknown."))
     exit()
 
 pymw_master = pymw.PyMW_Master(interface=interface_obj)
@@ -81,7 +80,7 @@ for gen_count in range(total_gens):
         
     max_fitness = reduce(lambda x, y: max(x,y), fitness)
     sum_fitness = reduce(lambda x, y: x+y, fitness)
-    print "Generation", gen_count, "max fitness", max_fitness, "average fitness", sum_fitness/num_inds
+    print(("Generation", gen_count, "max fitness", max_fitness, "average fitness", sum_fitness/num_inds))
     new_gene_pool = []
     for i in range(num_inds/2):
         parent1 = select(fitness, gene_pool)
@@ -102,9 +101,9 @@ avg_fit = reduce(lambda x, y: x+y, fitness)/len(gene_pool)
 
 end_time = time.time()
 
-print "Number of individuals:", str(num_inds)
-print "Best individual:", str(max_fitness),"/", str(gene_len)
-print "Average individual:", str(avg_fit),"/", str(gene_len)
-print "Number of workers:", str(n_workers)
-print "Calculation time:", str(end_time-start_time)
-print "Total time:", str(end_time-start_time)
+print(("Number of individuals:", str(num_inds)))
+print(("Best individual:", str(max_fitness),"/", str(gene_len)))
+print(("Average individual:", str(avg_fit),"/", str(gene_len)))
+print(("Number of workers:", str(n_workers)))
+print(("Calculation time:", str(end_time-start_time)))
+print(("Total time:", str(end_time-start_time)))

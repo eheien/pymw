@@ -34,7 +34,7 @@ elif options.interface == "ganga":
 elif options.interface == "boinc":
     interface_obj = pymw.interfaces.boinc.BOINCInterface(project_home=options.p_home)
 else:
-    print "Interface", options.interface, "unknown."
+    print(("Interface", options.interface, "unknown."))
     exit()
 
 num_tasks = n_workers
@@ -55,9 +55,9 @@ num_tests = 0
 
 for i in range(len(tasks)):
     res_task, result = pymw_master.get_result(tasks[i])
-    print "Counted", result, "instances of", search_strs[i]
+    print(("Counted", result, "instances of", search_strs[i]))
 
 end_time = time.time()
 
-print "Calculation time:", str(end_time-post_init_time)
-print "Total time:", str(end_time-start_time)
+print(("Calculation time:", str(end_time-post_init_time)))
+print(("Total time:", str(end_time-start_time)))

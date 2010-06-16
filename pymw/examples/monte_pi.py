@@ -15,7 +15,7 @@ def monte_pi(rand_seed, num_tests):
     random.seed(rand_seed)
     num_hits = 0
     
-    for i in xrange(num_tests):
+    for i in range(num_tests):
         num_hits += throw_dart()
         
     return [num_hits, num_tests]
@@ -51,7 +51,7 @@ elif options.interface == "boinc":
                                                          custom_app_dir=options.custom_app_dir,\
                                                          custom_args=[options.custom_app_args])
 else:
-    print "Interface", options.interface, "unknown."
+    print(("Interface", options.interface, "unknown."))
     exit()
 
 num_tasks = n_workers
@@ -77,8 +77,8 @@ for i in range(num_tasks):
 end_time = time.time()
 
 pi_estimate = 4.0 * float(num_hits)/num_tests
-print "Estimate of pi:", pi_estimate
-print "Estimate error:", abs(pi_estimate-math.pi)
-print "Number of Tasks:", str(num_tasks)
-print "Calculation time:", str(end_time-post_init_time)
-print "Total time:", str(end_time-start_time)
+print(("Estimate of pi:", pi_estimate))
+print(("Estimate error:", abs(pi_estimate-math.pi)))
+print(("Number of Tasks:", str(num_tasks)))
+print(("Calculation time:", str(end_time-post_init_time)))
+print(("Total time:", str(end_time-start_time)))

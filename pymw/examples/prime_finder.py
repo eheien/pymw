@@ -30,7 +30,7 @@ def prime_test(n):
         p = pow(decimal.Decimal(a), d, n) # p = a^d % n
         if p != 1:
             maybe_prime = False
-            for r in xrange(s):
+            for r in range(s):
                 q = pow(a, pow(2,r)*d, n) # q = a^(d*2^r) % n
                 if q == n-1:
                     maybe_prime = True
@@ -40,9 +40,9 @@ def prime_test(n):
 
 def prime_range_check(lower_bound, upper_bound):
     vals = [pow(decimal.Decimal(i), decimal.Decimal(2))+1 for i in range(lower_bound, upper_bound)]
-    odd_vals = filter(lambda(x): (x % 2) != 0, vals)
+    odd_vals = [x for x in vals if (x % 2) != 0]
     
-    primes = filter(prime_test, odd_vals)
+    primes = list(filter(prime_test, odd_vals))
     return primes
 
 parser = OptionParser(usage="usage: %prog")
@@ -71,7 +71,7 @@ elif options.interface == "ganga":
 elif options.interface == "boinc":
     interface_obj = pymw.interfaces.boinc.BOINCInterface(project_home=options.p_home)
 else:
-    print "Interface", options.interface, "unknown."
+    print(("Interface", options.interface, "unknown."))
     exit()
 
 num_tasks = n_workers
@@ -102,8 +102,8 @@ for i in range(len(in_data)):
 
 end_time = time.time()
 
-print primes[-5:]
+print((primes[-5:]))
 
-print "Number of workers:", str(n_workers)
-print "Calculation time:", str(end_time-start_time)
-print "Total time:", str(end_time-start_time)
+print(("Number of workers:", str(n_workers)))
+print(("Calculation time:", str(end_time-start_time)))
+print(("Total time:", str(end_time-start_time)))
