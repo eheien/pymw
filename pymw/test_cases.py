@@ -20,7 +20,7 @@ def err_worker():
 
 # Function to test capture of stdout/stderr from workers
 def print_worker():
-    print "stdout test",
+    print "stdout test"
     print >> sys.stderr, "stderr test",
     
 def square(list1):
@@ -42,9 +42,9 @@ def check_files(file_list):
     return True
 
 def killAll():
-    print
-    print "ERROR: Test failed to finish after 10 seconds, aborting."
-    print "WARNING: there may be unfinished child processes."
+    print()
+    print("ERROR: Test failed to finish after 10 seconds, aborting.")
+    print("WARNING: there may be unfinished child processes.")
     pgid = os.getpgid(0)
     os.killpg(pgid, signal.SIGKILL)
     os.abort()
@@ -107,7 +107,7 @@ class TestInterface(unittest.TestCase):
         task = self.pymw_master.submit_task(null_worker)
         try:
             self.pymw_master.get_result(task)
-        except Exception, e:
+        except Exception as e:
             self.assert_(e[0].count("execution error")>0)
         
     def testBadWorkerFuncs(self):
@@ -116,7 +116,7 @@ class TestInterface(unittest.TestCase):
         task = self.pymw_master.submit_task(null_worker)
         try:
             my_task, my_val = self.pymw_master.get_result(task)
-        except Exception, e:
+        except Exception as e:
             self.assert_(e[0].count("no problem")>0)
 
 # TODO: add test case for killing workers
@@ -162,7 +162,7 @@ class TestPyMW(unittest.TestCase):
         task = self.pymw_master.submit_task(err_worker)
         try:
             self.pymw_master.get_result(task)
-        except Exception, e:
+        except Exception as e:
             self.assert_(e[0].count("integer division or modulo by zero")>0)
     
     def testStdoutStderr(self):
@@ -177,7 +177,7 @@ class TestPyMW(unittest.TestCase):
         num_tasks = 10
         actual_total = 2870
         pymw_mapreduce=pymw.PyMW_MapReduce(self.pymw_master)
-        task_MR = pymw_mapreduce.submit_task_mapreduce(square, plus, num_tasks, input_data=range(1,21), modules=(), dep_funcs=())
+        task_MR = pymw_mapreduce.submit_task_mapreduce(square, plus, num_tasks, input_data=list(range(1,21)), modules=(), dep_funcs=())
         my_task, result = self.pymw_master.get_result(task_MR)
         self.assert_(sum(result) == actual_total)
         
