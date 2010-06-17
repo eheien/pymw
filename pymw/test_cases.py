@@ -132,8 +132,8 @@ class TestBadInterface(unittest.TestCase):
 # TODO: add test case for killing workers
 class TestPyMW(unittest.TestCase):
     def setUp(self):
-        if hasattr(self, "pymw_interface"):
-            self.pymw_master = pymw.PyMW_Master(interface=self.pymw_interface())
+        if pymw_interface:
+            self.pymw_master = pymw.PyMW_Master(interface=pymw_interface())
         else:
             self.pymw_master = pymw.PyMW_Master()
         self._kill_timer = threading.Timer(10, killAll)
