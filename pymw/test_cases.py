@@ -133,9 +133,9 @@ class TestBadInterface(unittest.TestCase):
 class TestPyMW(unittest.TestCase):
     def setUp(self):
         if hasattr(self, "pymw_interface"):
-	    self.pymw_master = pymw.PyMW_Master(interface=self.pymw_interface)
+            self.pymw_master = pymw.PyMW_Master(interface=self.pymw_interface())
         else:
-	    self.pymw_master = pymw.PyMW_Master()
+            self.pymw_master = pymw.PyMW_Master()
         self._kill_timer = threading.Timer(10, killAll)
         self._kill_timer.start()
 
@@ -261,18 +261,20 @@ if __name__ == '__main__':
         print("--multiproc: Run tests on multiprocessing interface.")
         exit(0)
 
-    print("|--------------------------------------|")
-    print("| Running test with generic interface. |")
-    print("|--------------------------------------|")
-    pymw_interface = interfaces.generic.GenericInterface()
-    pymw_suite = unittest.TestLoader().loadTestsFromTestCase(TestPyMW)
-    unittest.TextTestRunner(verbosity=2).run(pymw_suite)
+    if len(sys.argv) == 1 or "--generic" in sys.argv:
+        print("|--------------------------------------|")
+        print("| Running test with generic interface. |")
+        print("|--------------------------------------|")
+        pymw_interface = interfaces.generic.GenericInterface
+        pymw_suite = unittest.TestLoader().loadTestsFromTestCase(TestPyMW)
+        unittest.TextTestRunner(verbosity=2).run(pymw_suite)
 
-    print("|----------------------------------|")
-    print("| Running test with bad interface. |")
-    print("|----------------------------------|")
-    interface_suite = unittest.TestLoader().loadTestsFromTestCase(TestBadInterface)
-    unittest.TextTestRunner(verbosity=2).run(interface_suite)
+    if len(sys.argv) == 1 or "--generic" in sys.argv:
+        print("|----------------------------------|")
+        print("| Running test with bad interface. |")
+        print("|----------------------------------|")
+        interface_suite = unittest.TestLoader().loadTestsFromTestCase(TestBadInterface)
+        unittest.TextTestRunner(verbosity=2).run(interface_suite)
 
     # NOTE: some of these may fail because the tests will time out after 10 seconds.
     # NOTE: perhaps we should make the timeout variable?
@@ -280,7 +282,7 @@ if __name__ == '__main__':
         print("|------------------------------------|")
         print("| Running test with BOINC interface. |")
         print("|------------------------------------|")
-        pymw_interface = interfaces.boinc.BOINCInterface()
+        pymw_interface = interfaces.boinc.BOINCInterface
         pymw_suite = unittest.TestLoader().loadTestsFromTestCase(TestPyMW)
         unittest.TextTestRunner(verbosity=2).run(pymw_suite)
 
@@ -288,7 +290,7 @@ if __name__ == '__main__':
         print("|-------------------------------------|")
         print("| Running test with Condor interface. |")
         print("|-------------------------------------|")
-        pymw_interface = interfaces.condor.CondorInterface()
+        pymw_interface = interfaces.condor.CondorInterface
         pymw_suite = unittest.TestLoader().loadTestsFromTestCase(TestPyMW)
         unittest.TextTestRunner(verbosity=2).run(pymw_suite)
 
@@ -296,7 +298,7 @@ if __name__ == '__main__':
         print("|------------------------------------|")
         print("| Running test with GANGA interface. |")
         print("|------------------------------------|")
-        pymw_interface = interfaces.ganga.GANGAInterface()
+        pymw_interface = interfaces.ganga.GANGAInterface
         pymw_suite = unittest.TestLoader().loadTestsFromTestCase(TestPyMW)
         unittest.TextTestRunner(verbosity=2).run(pymw_suite)
 
@@ -304,7 +306,7 @@ if __name__ == '__main__':
         print("|---------------------------------------------|")
         print("| Running test with grid simulator interface. |")
         print("|---------------------------------------------|")
-        pymw_interface = interfaces.grid_simulator.GridSimulatorInterface()
+        pymw_interface = interfaces.grid_simulator.GridSimulatorInterface
         pymw_suite = unittest.TestLoader().loadTestsFromTestCase(TestPyMW)
         unittest.TextTestRunner(verbosity=2).run(pymw_suite)
 
@@ -312,7 +314,7 @@ if __name__ == '__main__':
         print("|----------------------------------|")
         print("| Running test with MPI interface. |")
         print("|----------------------------------|")
-        pymw_interface = interfaces.mpi.MPIInterface()
+        pymw_interface = interfaces.mpi.MPIInterface
         pymw_suite = unittest.TestLoader().loadTestsFromTestCase(TestPyMW)
         unittest.TextTestRunner(verbosity=2).run(pymw_suite)
 
@@ -320,7 +322,7 @@ if __name__ == '__main__':
         print("|----------------------------------------|")
         print("| Running test with MultiCore interface. |")
         print("|----------------------------------------|")
-        pymw_interface = interfaces.multicore.MulticoreInterface()
+        pymw_interface = interfaces.multicore.MulticoreInterface
         pymw_suite = unittest.TestLoader().loadTestsFromTestCase(TestPyMW)
         unittest.TextTestRunner(verbosity=2).run(pymw_suite)
 
@@ -328,7 +330,7 @@ if __name__ == '__main__':
         print("|----------------------------------------------|")
         print("| Running test with multiprocessing interface. |")
         print("|----------------------------------------------|")
-        pymw_interface = interfaces.multiproc.MultiProcInterface()
+        pymw_interface = interfaces.multiproc.MultiProcInterface
         pymw_suite = unittest.TestLoader().loadTestsFromTestCase(TestPyMW)
         unittest.TextTestRunner(verbosity=2).run(pymw_suite)
 
