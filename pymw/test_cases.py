@@ -1,5 +1,5 @@
 from pymw import *
-from pymw import interfaces 
+from pymw import interfaces
 import unittest
 import sys
 import threading
@@ -10,6 +10,8 @@ import logging
 
 # TODO: add test for sending archives of files
 # TODO: add test for sending modules
+
+pymw_interface = None
 
 # Null function to test standard operation
 def null_worker(in_data):
@@ -82,7 +84,7 @@ class BadInterface:
         elif self.status_err == 2:
             raise Exception()
 
-class TestInterface(unittest.TestCase):
+class TestBadInterface(unittest.TestCase):
     def setUp(self):
         self.bad_int = BadInterface()
         self.bad_int.status_err = 0
@@ -130,7 +132,10 @@ class TestInterface(unittest.TestCase):
 # TODO: add test case for killing workers
 class TestPyMW(unittest.TestCase):
     def setUp(self):
-        self.pymw_master = pymw.PyMW_Master()
+        if hasattr(self, "pymw_interface"):
+	    self.pymw_master = pymw.PyMW_Master(interface=self.pymw_interface)
+        else:
+	    self.pymw_master = pymw.PyMW_Master()
         self._kill_timer = threading.Timer(10, killAll)
         self._kill_timer.start()
 
@@ -245,8 +250,85 @@ class TestPyMW(unittest.TestCase):
         self.assert_(pymw_total == actual_total)
 
 if __name__ == '__main__':
+    if "--help" in sys.argv or "-h" in sys.argv:
+        print("--help: display this help message")
+        print("--boinc: Run tests on BOINC interface.")
+        print("--condor: Run tests on Condor interface.")
+        print("--ganga: Run tests on GANGA interface.")
+        print("--grid_simulator: Run tests on grid simulation interface.")
+        print("--mpi: Run tests on MPI interface.")
+        print("--multicore: Run tests on multicore interface.")
+        print("--multiproc: Run tests on multiprocessing interface.")
+        exit(0)
+
+    print("|--------------------------------------|")
+    print("| Running test with generic interface. |")
+    print("|--------------------------------------|")
+    pymw_interface = interfaces.generic.GenericInterface()
     pymw_suite = unittest.TestLoader().loadTestsFromTestCase(TestPyMW)
     unittest.TextTestRunner(verbosity=2).run(pymw_suite)
 
-    interface_suite = unittest.TestLoader().loadTestsFromTestCase(TestInterface)
+    print("|----------------------------------|")
+    print("| Running test with bad interface. |")
+    print("|----------------------------------|")
+    interface_suite = unittest.TestLoader().loadTestsFromTestCase(TestBadInterface)
     unittest.TextTestRunner(verbosity=2).run(interface_suite)
+
+    # NOTE: some of these may fail because the tests will time out after 10 seconds.
+    # NOTE: perhaps we should make the timeout variable?
+    if "--boinc" in sys.argv:
+        print("|------------------------------------|")
+        print("| Running test with BOINC interface. |")
+        print("|------------------------------------|")
+        pymw_interface = interfaces.boinc.BOINCInterface()
+        pymw_suite = unittest.TestLoader().loadTestsFromTestCase(TestPyMW)
+        unittest.TextTestRunner(verbosity=2).run(pymw_suite)
+
+    if "--condor" in sys.argv:
+        print("|-------------------------------------|")
+        print("| Running test with Condor interface. |")
+        print("|-------------------------------------|")
+        pymw_interface = interfaces.condor.CondorInterface()
+        pymw_suite = unittest.TestLoader().loadTestsFromTestCase(TestPyMW)
+        unittest.TextTestRunner(verbosity=2).run(pymw_suite)
+
+    if "--ganga" in sys.argv:
+        print("|------------------------------------|")
+        print("| Running test with GANGA interface. |")
+        print("|------------------------------------|")
+        pymw_interface = interfaces.ganga.GANGAInterface()
+        pymw_suite = unittest.TestLoader().loadTestsFromTestCase(TestPyMW)
+        unittest.TextTestRunner(verbosity=2).run(pymw_suite)
+
+    if "--grid_simulator" in sys.argv:
+        print("|---------------------------------------------|")
+        print("| Running test with grid simulator interface. |")
+        print("|---------------------------------------------|")
+        pymw_interface = interfaces.grid_simulator.GridSimulatorInterface()
+        pymw_suite = unittest.TestLoader().loadTestsFromTestCase(TestPyMW)
+        unittest.TextTestRunner(verbosity=2).run(pymw_suite)
+
+    if "--mpi" in sys.argv:
+        print("|----------------------------------|")
+        print("| Running test with MPI interface. |")
+        print("|----------------------------------|")
+        pymw_interface = interfaces.mpi.MPIInterface()
+        pymw_suite = unittest.TestLoader().loadTestsFromTestCase(TestPyMW)
+        unittest.TextTestRunner(verbosity=2).run(pymw_suite)
+
+    if "--multicore" in sys.argv:
+        print("|----------------------------------------|")
+        print("| Running test with MultiCore interface. |")
+        print("|----------------------------------------|")
+        pymw_interface = interfaces.multicore.MulticoreInterface()
+        pymw_suite = unittest.TestLoader().loadTestsFromTestCase(TestPyMW)
+        unittest.TextTestRunner(verbosity=2).run(pymw_suite)
+
+    if "--multiproc" in sys.argv:
+        print("|----------------------------------------------|")
+        print("| Running test with multiprocessing interface. |")
+        print("|----------------------------------------------|")
+        pymw_interface = interfaces.multiproc.MultiProcInterface()
+        pymw_suite = unittest.TestLoader().loadTestsFromTestCase(TestPyMW)
+        unittest.TextTestRunner(verbosity=2).run(pymw_suite)
+

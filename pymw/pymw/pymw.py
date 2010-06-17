@@ -408,6 +408,10 @@ class PyMW_Master:
         logging.basicConfig(level=loglevel, format="%(asctime)s %(levelname)s %(message)s")
 
         if interface:
+            if not hasattr(interface, "execute_task"):
+                raise InterfaceException("Interface must have execute_task() function.")
+            if not hasattr(interface.execute_task, '__call__'):
+                raise InterfaceException("Interface execute_task must be a function.")
             self._interface = interface
         else:
             self._interface = generic.GenericInterface()
