@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 
 from pymw import pymw
+from pymw import interfaces
 import time
 import random
 import math
@@ -15,7 +16,7 @@ def monte_pi(rand_seed, num_tests):
     random.seed(rand_seed)
     num_hits = 0
     
-    for i in range(num_tests):
+    for i in range(int(num_tests)):
         num_hits += throw_dart()
         
     return [num_hits, num_tests]
@@ -35,19 +36,19 @@ n_workers, n_tests = int(options.n_workers), int(options.n_tests)
 start_time = time.time()
 
 if options.interface == "generic":
-    interface_obj = pymw.interfaces.generic.GenericInterface(num_workers=n_workers)
+    interface_obj = interfaces.generic.GenericInterface(num_workers=n_workers)
 elif options.interface == "multicore":
-    interface_obj = pymw.interfaces.multicore.MulticoreInterface(num_workers=n_workers)
+    interface_obj = interfaces.multicore.MulticoreInterface(num_workers=n_workers)
 elif options.interface == "multiproc":
-    interface_obj = pymw.interfaces.multiproc.MultiProcInterface(num_workers=n_workers)
+    interface_obj = interfaces.multiproc.MultiProcInterface(num_workers=n_workers)
 elif options.interface == "mpi":
-    interface_obj = pymw.interfaces.mpi.MPIInterface(num_workers=n_workers)
+    interface_obj = interfaces.mpi.MPIInterface(num_workers=n_workers)
 elif options.interface == "condor":
-    interface_obj = pymw.interfaces.condor.CondorInterface()
+    interface_obj = interfaces.condor.CondorInterface()
 elif options.interface == "ganga":
-    interface_obj = pymw.interfaces.ganga.GANGAInterface(ganga_loc=options.g_loc)
+    interface_obj = interfaces.ganga.GANGAInterface(ganga_loc=options.g_loc)
 elif options.interface == "boinc":
-    interface_obj = pymw.interfaces.boinc.BOINCInterface(project_home=options.p_home,\
+    interface_obj = interfaces.boinc.BOINCInterface(project_home=options.p_home,\
                                                          custom_app_dir=options.custom_app_dir,\
                                                          custom_args=[options.custom_app_args])
 else:

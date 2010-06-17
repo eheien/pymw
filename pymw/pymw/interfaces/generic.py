@@ -50,7 +50,7 @@ class GenericInterface:
 										    	cwd=self._worker_dirs[worker], creationflags=cf, stderr=subprocess.PIPE)
 		proc_stdout, proc_stderr = exec_process.communicate()   # wait for the process to finish
 		if exec_process.returncode is not 0:
-			raise Exception("Executable failed with error "+str(exec_process.returncode)+"\n"+proc_stderr)
+			raise Exception("Executable failed with error "+str(exec_process.returncode)+"\n"+proc_stderr.decode())
 		
 		task.task_finished()
 

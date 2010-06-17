@@ -5,7 +5,7 @@
 import threading, shutil, os, sys
 import time, calendar
 import logging
-import boinc_setup
+from . import boinc_setup
 
 
 __author__ = ["Adam Kornafeld <kadam@sztaki.hu>",

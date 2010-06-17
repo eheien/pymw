@@ -1,5 +1,5 @@
 __all__ = ["pymw"]
 
-from pymw import PyMW_Master
-from interfaces import *
+from .pymw import PyMW_Master
+from .interfaces import *
 

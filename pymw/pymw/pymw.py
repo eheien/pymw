@@ -21,14 +21,17 @@ import time
 import traceback
 import types
 import zipfile
-import interfaces.generic
-import interfaces.multicore
-import interfaces.multiproc
-import interfaces.mpi
-import interfaces.ganga
-import interfaces.condor
-import interfaces.boinc
-import interfaces.grid_simulator
+from .interfaces import generic
+from .interfaces import multicore
+from .interfaces import multiproc
+from .interfaces import mpi
+from .interfaces import ganga
+from .interfaces import condor
+from .interfaces import boinc
+from .interfaces import grid_simulator
+
+if sys.version_info[0] > 2:
+    from io import StringIO
 
 class PyMW_List:
     """A class representing a Python list with atomic operation functionality needed for PyMW."""
@@ -43,10 +46,10 @@ class PyMW_List:
     
     def get_data(self):
         """Returns a copy of the internal data list that can be modified."""
-    	self._lock.acquire()
-    	copy_list = list(self._data)
-    	self._lock.release()
-    	return copy_list
+        self._lock.acquire()
+        copy_list = list(self._data)
+        self._lock.release()
+        return copy_list
     	
     def append(self, item):
         """Atomically appends an item to the list and notifies any waiting threads."""
@@ -129,7 +132,9 @@ class PyMW_Task:
                  input_data=None, input_arg=None, output_arg=None, file_loc="tasks",
                  data_file_zip=None, modules_file_zip=None, file_input=False, raw_exec=None):
         # Make sure executable is valid
-        if not isinstance(executable, bytes) and not isinstance(executable, types.FunctionType):
+        if not isinstance(executable, bytes) \
+			and not isinstance(executable, types.FunctionType) \
+			and not isinstance(executable, str):
             raise TypeError("executable must be a filename or Python function")
         
         self._finished_queue = finished_queue
@@ -405,7 +410,7 @@ class PyMW_Master:
         if interface:
             self._interface = interface
         else:
-            self._interface = interfaces.generic.GenericInterface()
+            self._interface = generic.GenericInterface()
         
         self._start_time_str = str(int(time.time()))
         self._submitted_tasks = []
@@ -416,7 +421,11 @@ class PyMW_Master:
         self._task_dir_name = os.getcwd() + "/tasks"
         self._cur_task_num = 0
         self._function_source = {}
-        self._pymw_interface_modules = "pickle", "sys", "StringIO", "zipfile", "traceback"
+        if sys.version_info[0] > 2:
+            self._pymw_interface_modules = "pickle", "sys", "zipfile", "traceback", "io"
+        else:
+            self._pymw_interface_modules = "pickle", "sys", "zipfile", "traceback","StringIO"
+    
         self._data_file_zips = {}
         self._module_zips = {}
 
@@ -675,24 +684,24 @@ class PyMW_Master:
             pass
 
     def pymw_master_read(self, loc):
-        infile = open(loc, 'r')
+        infile = open(loc, 'rb')
         obj = pickle.Unpickler(infile).load()
         infile.close()
         return obj
     
     def pymw_master_write(self, output, loc):
-        outfile = open(loc, 'w')
+        outfile = open(loc, 'wb')
         pickle.Pickler(outfile).dump(output)
         outfile.close()
     
     def pymw_worker_read(options):
-        infile = open(sys.argv[1], 'r')
+        infile = open(sys.argv[1], 'rb')
         obj = pickle.Unpickler(infile).load()
         infile.close()
         return obj
 
     def pymw_worker_write(output, options):
-        outfile = open(sys.argv[2], 'w')
+        outfile = open(sys.argv[2], 'wb')
         pickle.Pickler(outfile).dump(output)
         outfile.close()
 
@@ -710,8 +719,14 @@ class PyMW_Master:
             # Redirect stdout and stderr
             old_stdout = sys.stdout
             old_stderr = sys.stderr
-            sys.stdout = StringIO.StringIO()
-            sys.stderr = StringIO.StringIO()
+
+            if sys.version_info[0] > 2:
+                sys.stdout = io.StringIO()
+                sys.stderr = io.StringIO()
+            else:
+                sys.stdout = StringIO.StringIO()
+                sys.stderr = StringIO.StringIO()
+
             # If there is a zip file, unzip the contents
             if "arch_file" in options:
                 data_arch = zipfile.PyZipFile(file=options["arch_file"], mode='r')
@@ -756,7 +771,7 @@ class PyMW_MapReduce:
         self._task_dir_name = "tasks"
         
     def _data_split(self, data, num):
-        q1=len(data)/num
+        q1=len(data)//num
         q2=len(data)%num
         res=[]
         p=0

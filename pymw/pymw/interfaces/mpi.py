@@ -6,7 +6,7 @@ __author__ = "Eric Heien <pymw@heien.org>"
 __date__ = "10 April 2008"
 
 import sys
-from mpi4py import MPI
+#from mpi4py import MPI
 # NOTE: this interface currently has a limit of 100 processes b/c of the PyMW thread limiter.
 # This can be fixed if mpi4py IProbe gets fixed
 

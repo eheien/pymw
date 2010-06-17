@@ -1,4 +1,5 @@
 from pymw import *
+from pymw import interfaces 
 import unittest
 import sys
 import threading
@@ -20,8 +21,11 @@ def err_worker():
 
 # Function to test capture of stdout/stderr from workers
 def print_worker():
-    print "stdout test",
-    print >> sys.stderr, "stderr test",
+    # TODO: replace these with print statements
+    sys.stdout.write("stdout test")
+    #print("stdout test")
+    sys.stderr.write("stderr test")
+    #print("stderr test", end=' ', file=sys.stderr)
     
 # Function to test map section of map-reduce code
 def square(list1):
@@ -156,7 +160,7 @@ class TestPyMW(unittest.TestCase):
 
     def testBadPython(self):
         """Checking that using an invalid Python location returns an error"""
-        interface = pymw.interfaces.generic.GenericInterface(python_loc="/usr/local/dead_parrot/python")
+        interface = interfaces.generic.GenericInterface(python_loc="/usr/local/dead_parrot/python")
         pymw_master = pymw.PyMW_Master(interface)
         task = pymw_master.submit_task(executable=null_worker, input_data=(1,))
         self.assertRaises(Exception, pymw_master.get_result, task)
