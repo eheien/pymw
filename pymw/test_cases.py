@@ -20,14 +20,16 @@ def err_worker():
 
 # Function to test capture of stdout/stderr from workers
 def print_worker():
-    print "stdout test"
+    print "stdout test",
     print >> sys.stderr, "stderr test",
     
+# Function to test map section of map-reduce code
 def square(list1):
     for i in range(len(list1)):
         list1[i] *= list1[i]
     return list1
 
+# Function to test reduce section of map-reduce code
 def plus(list2):
     return sum(list2)
 
@@ -41,6 +43,7 @@ def check_files(file_list):
     
     return True
 
+# Kills all children processes in case of a stuck test
 def killAll():
     print()
     print("ERROR: Test failed to finish after 10 seconds, aborting.")
@@ -49,6 +52,7 @@ def killAll():
     os.killpg(pgid, signal.SIGKILL)
     os.abort()
 
+# Simulates exceptions happening in various places in an interface
 class BadInterface:
     def get_available_workers(self):
         if self.worker_err == 1:

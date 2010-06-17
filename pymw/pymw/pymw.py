@@ -6,6 +6,7 @@ __author__ = "Eric Heien <pymw@heien.org>"
 __date__ = "10 April 2008"
 
 import atexit
+
 import pickle
 import errno
 import logging
@@ -415,7 +416,7 @@ class PyMW_Master:
         self._task_dir_name = os.getcwd() + "/tasks"
         self._cur_task_num = 0
         self._function_source = {}
-        self._pymw_interface_modules = "pickle", "sys", "cStringIO", "zipfile", "traceback"
+        self._pymw_interface_modules = "pickle", "sys", "StringIO", "zipfile", "traceback"
         self._data_file_zips = {}
         self._module_zips = {}
 
@@ -709,8 +710,8 @@ class PyMW_Master:
             # Redirect stdout and stderr
             old_stdout = sys.stdout
             old_stderr = sys.stderr
-            sys.stdout = cStringIO.StringIO()
-            sys.stderr = cStringIO.StringIO()
+            sys.stdout = StringIO.StringIO()
+            sys.stderr = StringIO.StringIO()
             # If there is a zip file, unzip the contents
             if "arch_file" in options:
                 data_arch = zipfile.PyZipFile(file=options["arch_file"], mode='r')
