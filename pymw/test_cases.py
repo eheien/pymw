@@ -118,7 +118,7 @@ class TestBadInterface(unittest.TestCase):
         try:
             self.pymw_master.get_result(task)
         except Exception as e:
-            self.assert_(e[0].count("execution error")>0)
+            self.assert_(e.args[0].count("execution error")>0)
         
     def testBadWorkerFuncs(self):
         """Checking that failing worker reservation functions are properly handled"""
@@ -127,7 +127,7 @@ class TestBadInterface(unittest.TestCase):
         try:
             my_task, my_val = self.pymw_master.get_result(task)
         except Exception as e:
-            self.assert_(e[0].count("no problem")>0)
+            self.assert_(e.args[0].count("no problem")>0)
 
 # TODO: add test case for killing workers
 class TestPyMW(unittest.TestCase):
@@ -173,10 +173,17 @@ class TestPyMW(unittest.TestCase):
     def testProgramError(self):
         """Checking that exceptions from the worker get passed back correctly"""
         task = self.pymw_master.submit_task(err_worker)
-        try:
-            self.pymw_master.get_result(task)
-        except Exception as e:
-            self.assert_(e[0].count("integer division or modulo by zero")>0)
+        if sys.version_info[0] < 3:
+            try:
+                self.pymw_master.get_result(task)
+            except Exception as e:
+                self.assert_(e.args[0].count("integer division or modulo by zero")>0)
+        else:
+            try:
+                self.pymw_master.get_result(task)
+            except Exception as e:
+                self.assert_(e.args[0].count("int division or modulo by zero")>0)
+            
     
     def testStdoutStderr(self):
         """Checking that stdout and stderr are correctly routed from the workers"""
@@ -202,7 +209,7 @@ class TestPyMW(unittest.TestCase):
         name_list = []
         path_list = tuple([file[1] for file in file_list])
         for file in file_list:
-            os.write(file[0], "booga")
+            os.write(file[0], b"booga")
             os.close(file[0])
             name_list.append(file[1].split("/")[-1])
         
