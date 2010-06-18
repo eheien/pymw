@@ -22,13 +22,6 @@ import traceback
 import types
 import zipfile
 from .interfaces import generic
-from .interfaces import multicore
-from .interfaces import multiproc
-from .interfaces import mpi
-from .interfaces import ganga
-from .interfaces import condor
-from .interfaces import boinc
-from .interfaces import grid_simulator
 
 if sys.version_info[0] > 2:
     from io import StringIO

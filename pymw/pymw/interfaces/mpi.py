@@ -12,7 +12,11 @@ import shutil
 import os
 import inspect
 
-from mpi4py import MPI
+try:
+	from mpi4py import MPI
+except ImportError:
+	MPI = None
+
 # NOTE: this interface currently has a limit of 100 processes b/c of the PyMW thread limiter.
 # This can be fixed if mpi4py IProbe gets fixed
 
@@ -42,6 +46,8 @@ def worker_func():
 
 class MPIInterface:
 	def __init__(self, num_workers=1):
+		if MPI is None:
+			raise Exception("PyMW MPI interface requires mpi4py to be installed. Please install mpi4py and try again.")
 		# TODO: Write the worker function to a temp file and run MPI with this file
 		self._worker_func_fd, self._worker_func_filename = tempfile.mkstemp(suffix="py")
 		self._worker_func_file = os.fdopen(self._worker_func_fd, "w")
