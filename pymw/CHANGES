@@ -1,5 +1,7 @@
 
 Changes in 0.4
+- Added support for Python 3.0 (tested with Python 3.1)
+- Added Ganga interface (contributed by Wayne San)
 
 Changes in 0.3
 - Added MapReduce class for use with PyMW.
