@@ -15,7 +15,7 @@ class GenericInterface:
 	"""Provides a simple generic interface for single machine systems.
 	This can take advantage of multicore machines by starting multiple processes."""
 
-	def __init__(self, num_workers=1, python_loc="python"):
+	def __init__(self, num_workers=1, python_loc=sys.executable):
 		"""Interface initialization should start any necessary programs, 
 		and create an initial list of workers if appropriate."""
 		self._num_workers = num_workers

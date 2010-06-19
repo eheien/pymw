@@ -1,15 +1,12 @@
-__all__ = ["generic", "boinc", "ganga", "mpi", "multiproc", "multicore"]
+__all__ = ["generic", "boinc", "condor", "ganga", "mpi", "multicore"]
 
 from .generic import *
 
 import sys
 
 from optparse import OptionParser
-from pymw.interfaces import generic 
-from pymw.interfaces import multicore
-from pymw.interfaces import boinc
-from pymw.interfaces import condor
-from pymw.interfaces import mpi
+for interface in __all__:
+	from pymw.interfaces import interface
 
 def parse_options(parser=None, args=None):
     """Parses the standard options associated with a PyMW application.
@@ -54,8 +51,6 @@ def get_interface(options):
         interface_obj = generic.GenericInterface(num_workers=n_workers)
     elif options.interface == "multicore":
         interface_obj = multicore.MulticoreInterface(num_workers=n_workers)
-    elif options.interface == "multiproc":
-        interface_obj = multicore.MultiProcInterface(num_workers=n_workers)
     elif options.interface == "mpi":
         interface_obj = mpi.MPIInterface(num_workers=n_workers)
     elif options.interface == "condor":
@@ -67,7 +62,7 @@ def get_interface(options):
                                              custom_app_dir=options.custom_app_dir,\
                                              custom_args=[options.custom_app_args])
     else:
-        print "Interface", options.interface, "unknown."
+        print(("Interface", options.interface, "unknown."))
         exit()
 
     return interface_obj

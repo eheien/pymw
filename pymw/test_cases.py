@@ -267,7 +267,6 @@ if __name__ == '__main__':
 		print("--grid_simulator: Run tests on grid simulation interface.")
 		print("--mpi: Run tests on MPI interface.")
 		print("--multicore: Run tests on multicore interface.")
-		print("--multiproc: Run tests on multiprocessing interface.")
 		exit(0)
 
 	if len(sys.argv) == 1 or "--generic" in sys.argv:
@@ -338,15 +337,6 @@ if __name__ == '__main__':
 		print("| Running test with MultiCore interface. |")
 		print("|----------------------------------------|")
 		pymw_interface = interfaces.multicore.MulticoreInterface
-		pymw_interface_args = ()
-		pymw_suite = unittest.TestLoader().loadTestsFromTestCase(TestPyMW)
-		unittest.TextTestRunner(verbosity=2).run(pymw_suite)
-
-	if "--multiproc" in sys.argv:
-		print("|----------------------------------------------|")
-		print("| Running test with multiprocessing interface. |")
-		print("|----------------------------------------------|")
-		pymw_interface = interfaces.multiproc.MultiProcInterface
 		pymw_interface_args = ()
 		pymw_suite = unittest.TestLoader().loadTestsFromTestCase(TestPyMW)
 		unittest.TextTestRunner(verbosity=2).run(pymw_suite)
