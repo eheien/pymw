@@ -6,6 +6,7 @@ import time
 import random
 import math
 from optparse import OptionParser
+import sys
 
 def throw_dart():
     pt = math.pow(random.random(),2) + math.pow(random.random(),2)
@@ -22,38 +23,16 @@ def monte_pi(rand_seed, num_tests):
     return [num_hits, num_tests]
 
 parser = OptionParser(usage="usage: %prog")
-parser.add_option("-i", "--interface", dest="interface", default="generic", help="specify the interface (generic/multicore/mpi/ganga/condor/boinc)", metavar="INTERFACE")
-parser.add_option("-n", "--num_workers", dest="n_workers", default="4", help="number of workers", metavar="N")
-parser.add_option("-t", "--num_tests", dest="n_tests", default="1000000", help="number of Monte Carlo tests to perform", metavar="N")
-parser.add_option("-g", "--ganga_loc", dest="g_loc", default="~/Ganga/bin/ganga", help="directory of GANGA executable (GANGA interface)", metavar="FILE")
-parser.add_option("-p", "--project_home", dest="p_home", default="", help="directory of the project (BOINC interface)", metavar="DIR")
-parser.add_option("-c", "--app_path", dest="custom_app_dir", default="", help="directory of a custom worker application (BOINC interface)", metavar="DIR")
-parser.add_option("-a", "--app_args", dest="custom_app_args", default="", help="arguments for a custom worker application (BOINC interface)", metavar="DIR")
-options, args = parser.parse_args()
+parser.add_option("-t", "--num_tests", dest="n_tests", default="1000000", 
+                    help="number of Monte Carlo tests to perform", metavar="N")
+options,args = interfaces.parse_options(parser)
 
 n_workers, n_tests = int(options.n_workers), int(options.n_tests)
 
 start_time = time.time()
 
-if options.interface == "generic":
-    interface_obj = interfaces.generic.GenericInterface(num_workers=n_workers)
-elif options.interface == "multicore":
-    interface_obj = interfaces.multicore.MulticoreInterface(num_workers=n_workers)
-elif options.interface == "multiproc":
-    interface_obj = interfaces.multiproc.MultiProcInterface(num_workers=n_workers)
-elif options.interface == "mpi":
-    interface_obj = interfaces.mpi.MPIInterface(num_workers=n_workers)
-elif options.interface == "condor":
-    interface_obj = interfaces.condor.CondorInterface()
-elif options.interface == "ganga":
-    interface_obj = interfaces.ganga.GANGAInterface(ganga_loc=options.g_loc)
-elif options.interface == "boinc":
-    interface_obj = interfaces.boinc.BOINCInterface(project_home=options.p_home,\
-                                                         custom_app_dir=options.custom_app_dir,\
-                                                         custom_args=[options.custom_app_args])
-else:
-    print(("Interface", options.interface, "unknown."))
-    exit()
+# get an interface object based on command-line options 
+interface_obj = interfaces.get_interface(options)
 
 num_tasks = n_workers
 pymw_master = pymw.PyMW_Master(interface=interface_obj)
@@ -81,5 +60,6 @@ pi_estimate = 4.0 * float(num_hits)/num_tests
 print(("Estimate of pi:", pi_estimate))
 print(("Estimate error:", abs(pi_estimate-math.pi)))
 print(("Number of Tasks:", str(num_tasks)))
+print(("Tests per Task:", str(tests_per_task)))
 print(("Calculation time:", str(end_time-post_init_time)))
 print(("Total time:", str(end_time-start_time)))
