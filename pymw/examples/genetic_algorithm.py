@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 
 from pymw import pymw
+from pymw import interfaces 
 import time
 from optparse import OptionParser
 import random
@@ -31,31 +32,24 @@ def crossover(ind1, ind2):
     return new_ind1, new_ind2
 
 parser = OptionParser(usage="usage: %prog")
-parser.add_option("-i", "--interface", dest="interface", default="generic", help="specify the interface (multicore/mpi/boinc)", metavar="INTERFACE")
-parser.add_option("-n", "--num_workers", dest="n_workers", default="1", help="number of workers", metavar="N")
-parser.add_option("-p", "--project_home", dest="p_home", default="", help="directory of the project (BOINC interface)", metavar="DIR")
-parser.add_option("-m", "--num_individuals", dest="n_inds", default="20", help="total number of individuals for genetic algorithm", metavar="DIR")
-parser.add_option("-l", "--gene_length", dest="g_len", default="20", help="gene length of each individual", metavar="DIR")
-parser.add_option("-t", "--total_generations", dest="total_gens", default="10", help="total number of generations to run genetic algorithm", metavar="DIR")
 
-options, args = parser.parse_args()
+parser.add_option("-m", "--num_individuals", dest="n_inds", default="20", 
+                help="total number of individuals for genetic algorithm")
+
+parser.add_option("-l", "--gene_length", dest="g_len", default="20", 
+                help="gene length of each individual")
+
+parser.add_option("-t", "--total_generations", dest="total_gens", default="10",
+                help="total number of generations to run genetic algorithm")
+
+options, args = interfaces.parse_options(parser) 
 
 n_workers, num_inds, gene_len = int(options.n_workers), int(options.n_inds), int(options.g_len)
 total_gens = int(options.total_gens)
 
 start_time = time.time()
 
-if options.interface == "generic":
-    interface_obj = pymw.interfaces.generic.GenericInterface(num_workers=n_workers)
-elif options.interface == "multicore":
-    interface_obj = pymw.interfaces.multicore.MulticoreInterface(num_workers=n_workers)
-elif options.interface == "mpi":
-    interface_obj = pymw.interfaces.mpi.MPIInterface(num_workers=n_workers)
-elif options.interface == "boinc":
-    interface_obj = pymw.interfaces.boinc.BOINCInterface(project_home=options.p_home)
-else:
-    print(("Interface", options.interface, "unknown."))
-    exit()
+interface_obj = interfaces.get_interface(options)
 
 pymw_master = pymw.PyMW_Master(interface=interface_obj)
 post_init_time = time.time()

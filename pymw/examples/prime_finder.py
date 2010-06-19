@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 
 from pymw import *
+from pymw import interfaces
 import time
 import random
 import decimal
@@ -39,41 +40,28 @@ def prime_test(n):
     return True
 
 def prime_range_check(lower_bound, upper_bound):
-    vals = [pow(decimal.Decimal(i), decimal.Decimal(2))+1 for i in range(lower_bound, upper_bound)]
+    vals = [pow(decimal.Decimal(i), decimal.Decimal(2))+1 
+            for i in range(lower_bound, upper_bound)]
     odd_vals = [x for x in vals if (x % 2) != 0]
     
     primes = list(filter(prime_test, odd_vals))
     return primes
 
 parser = OptionParser(usage="usage: %prog")
-parser.add_option("-i", "--interface", dest="interface", default="generic", help="specify the interface (generic/multicore/mpi/ganga/condor/boinc)", metavar="INTERFACE")
-parser.add_option("-n", "--num_workers", dest="n_workers", default="4", help="number of workers", metavar="N")
-parser.add_option("-r", "--min_val", dest="min_val", default="1", help="minimum value to check", metavar="N")
-parser.add_option("-s", "--max_val", dest="max_val", default="10000", help="maximum value to check", metavar="N")
-parser.add_option("-g", "--ganga_loc", dest="g_loc", default="~/Ganga/bin/ganga", help="directory of GANGA executable (GANGA interface)", metavar="FILE")
-parser.add_option("-p", "--project_home", dest="p_home", default="", help="directory of the project (BOINC interface)", metavar="DIR")
-options, args = parser.parse_args()
+
+parser.add_option("-r", "--min_val", dest="min_val", default="1",
+                help="minimum value to check", metavar="N")
+
+parser.add_option("-s", "--max_val", dest="max_val", default="10000", 
+                help="maximum value to check", metavar="N")
+
+options, args = interfaces.parse_options(parser)
 
 n_workers, min_val, max_val = int(options.n_workers), int(options.min_val), int(options.max_val)
 
 start_time = time.time()
 
-if options.interface == "generic":
-    interface_obj = pymw.interfaces.generic.GenericInterface(num_workers=n_workers)
-elif options.interface == "multicore":
-    interface_obj = pymw.interfaces.multicore.MulticoreInterface(num_workers=n_workers)
-elif options.interface == "mpi":
-    interface_obj = pymw.interfaces.mpi.MPIInterface(num_workers=n_workers)
-elif options.interface == "condor":
-    interface_obj = pymw.interfaces.condor.CondorInterface()
-elif options.interface == "ganga":
-    interface_obj = pymw.interfaces.ganga.GANGAInterface(ganga_loc=options.g_loc)
-elif options.interface == "boinc":
-    interface_obj = pymw.interfaces.boinc.BOINCInterface(project_home=options.p_home)
-else:
-    print(("Interface", options.interface, "unknown."))
-    exit()
-
+interface_obj = interfaces.get_interface(options)
 num_tasks = n_workers
 pymw_master = pymw.PyMW_Master(interface=interface_obj)
 

@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 
 from pymw import *
+from pymw import interfaces
 import time
 from optparse import OptionParser
 
@@ -8,34 +9,21 @@ def null_worker(in_data):
     return in_data
 
 parser = OptionParser(usage="usage: %prog")
-parser.add_option("-i", "--interface", dest="interface", default="generic", help="specify the interface (generic/multicore/mpi/ganga/condor/boinc)", metavar="INTERFACE")
-parser.add_option("-n", "--num_workers", dest="n_workers", default="4", help="number of workers", metavar="N")
-parser.add_option("-t", "--num_tasks", dest="n_tasks", default="5", help="number of tasks", metavar="N")
-parser.add_option("-s", "--task_size", dest="task_size", default="1", help="task data size (kilobytes)", metavar="N")
-parser.add_option("-g", "--ganga_loc", dest="g_loc", default="~/Ganga/bin/ganga", help="directory of GANGA executable (GANGA interface)", metavar="FILE")
-parser.add_option("-p", "--project_home", dest="p_home", default="", help="directory of the project (BOINC interface)", metavar="DIR")
-options, args = parser.parse_args()
+
+parser.add_option("-t", "--num_tasks", dest="n_tasks", default="5", 
+                help="number of tasks", metavar="N")
+
+parser.add_option("-s", "--task_size", dest="task_size", default="1", 
+                help="task data size (kilobytes)", metavar="N")
+
+options, args = interfaces.parse_options(parser)
+ 
 
 n_workers, n_tasks, task_size = int(options.n_workers), int(options.n_tasks), int(options.task_size)
 
 start_time = time.time()
 
-if options.interface == "generic":
-    interface_obj = pymw.interfaces.generic.GenericInterface(num_workers=n_workers)
-elif options.interface == "multicore":
-    interface_obj = pymw.interfaces.multicore.MulticoreInterface(num_workers=n_workers)
-elif options.interface == "mpi":
-    interface_obj = pymw.interfaces.mpi.MPIInterface(num_workers=n_workers)
-elif options.interface == "condor":
-    interface_obj = pymw.interfaces.condor.CondorInterface()
-elif options.interface == "ganga":
-    interface_obj = pymw.interfaces.ganga.GANGAInterface(ganga_loc=options.g_loc)
-elif options.interface == "boinc":
-    interface_obj = pymw.interfaces.boinc.BOINCInterface(project_home=options.p_home)
-else:
-    print(("Interface", options.interface, "unknown."))
-    exit()
-
+interface_obj = interfaces.get_interface(options)
 pymw_master = pymw.PyMW_Master(interface=interface_obj)
 
 post_init_time = time.time()
