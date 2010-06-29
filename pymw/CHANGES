@@ -3,6 +3,8 @@ Changes in 0.4
 - Added support for Python 3.0 (tested with Python 3.1)
 - Added Ganga interface (contributed by Wayne San)
 - Added helper methods to simplify application setup
+- Changed MPI interface to use mpi4py rather than pympi.
+- Various bug fixes.
 
 Changes in 0.3
 - Added MapReduce class for use with PyMW.
