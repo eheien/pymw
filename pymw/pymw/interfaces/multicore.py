@@ -77,7 +77,7 @@ class MulticoreInterface:
 			self._output_objs[task._output_arg] = pickle.loads(proc_stdout)
 		else:
 			raise Exception("Executable failed with error "+str(retcode)+"\n"+proc_stderr)
-				
+		
 		worker._exec_process = None
 		task.task_finished()	# notify the task
 

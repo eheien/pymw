@@ -47,7 +47,7 @@ class GenericInterface:
 		
 		# Execute the task
 		exec_process = subprocess.Popen(args=[self._python_loc, task._executable, task._input_arg, task._output_arg],
-										    	cwd=self._worker_dirs[worker], creationflags=cf, stderr=subprocess.PIPE)
+												cwd=self._worker_dirs[worker], creationflags=cf, stderr=subprocess.PIPE)
 		proc_stdout, proc_stderr = exec_process.communicate()   # wait for the process to finish
 		if exec_process.returncode is not 0:
 			raise Exception("Executable failed with error "+str(exec_process.returncode)+"\n"+proc_stderr.decode())

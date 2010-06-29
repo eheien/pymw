@@ -60,7 +60,7 @@ class MPIInterface:
 		self._worker_func_file.write(worker_func_source)
 		self._worker_func_file.write("worker_func()\n")
 		self._worker_func_file.close()
-        
+		
 		self._child_comm = MPI.COMM_SELF.Spawn(sys.executable,
 												args=[self._worker_func_filename],
 												maxprocs=num_workers)

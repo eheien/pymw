@@ -123,7 +123,7 @@ class GridSimulatorInterface:
 	def read_workers_from_fta_tab_files(self, event_trace_file, num_workers=None):
 		if event_trace_file:
 			worker_dict = {}
-			event_trace_file.readline()      # skip the header line
+			event_trace_file.readline()	  # skip the header line
 			for line in event_trace_file:
 				split_line = line.split()
 				node_id, start_time, stop_time = split_line[2], float(split_line[6]), float(split_line[7])
@@ -211,12 +211,12 @@ class GridSimulatorInterface:
 		cur_sim_time = max(worker_sim_times)
 		num_workers = len(self._worker_list) + len(self._waiting_list)
 		return {"num_total_workers" : num_workers, "num_executed_tasks" : self._num_executed_tasks,
-			    "cur_sim_time": cur_sim_time,
-			    "total_wall_time": total_wall_time, "mean_wall_time": mean_wall_time,
-			    "median_wall_time": median_wall_time, "stddev_wall_time": stddev_wall_time,
-			    "total_cpu_time": total_cpu_time, "mean_cpu_time": mean_cpu_time,
-			    "median_cpu_time": median_cpu_time, "stddev_cpu_time": stddev_cpu_time,
-			    }
+				"cur_sim_time": cur_sim_time,
+				"total_wall_time": total_wall_time, "mean_wall_time": mean_wall_time,
+				"median_wall_time": median_wall_time, "stddev_wall_time": stddev_wall_time,
+				"total_cpu_time": total_cpu_time, "mean_cpu_time": mean_cpu_time,
+				"median_cpu_time": median_cpu_time, "stddev_cpu_time": stddev_cpu_time,
+				}
 
 	def pymw_master_read(self, loc):
 		return None, None, None
