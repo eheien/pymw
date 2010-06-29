@@ -6,15 +6,15 @@ import time
 from optparse import OptionParser
 
 def null_worker(in_data):
-    return in_data
+	return in_data
 
 parser = OptionParser(usage="usage: %prog")
 
 parser.add_option("-t", "--num_tasks", dest="n_tasks", default="5", 
-                help="number of tasks", metavar="N")
+				help="number of tasks", metavar="N")
 
 parser.add_option("-s", "--task_size", dest="task_size", default="1", 
-                help="task data size (kilobytes)", metavar="N")
+				help="task data size (kilobytes)", metavar="N")
 
 options, args = interfaces.parse_options(parser)
  
@@ -30,7 +30,7 @@ post_init_time = time.time()
 tasks = [pymw_master.submit_task(null_worker, input_data=(list(range(task_size*256)),)) for i in range(n_tasks)]
 
 for task in tasks:
-    res_task, res = pymw_master.get_result(task)
+	res_task, res = pymw_master.get_result(task)
 
 end_time = time.time()
 total_io = 2*task_size*n_tasks/1024.0
