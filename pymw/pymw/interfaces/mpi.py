@@ -49,7 +49,7 @@ class MPIInterface:
 		if MPI is None:
 			raise Exception("PyMW MPI interface requires mpi4py to be installed. Please install mpi4py and try again.")
 		# TODO: Write the worker function to a temp file and run MPI with this file
-		self._worker_func_fd, self._worker_func_filename = tempfile.mkstemp(suffix="py")
+		self._worker_func_fd, self._worker_func_filename = tempfile.mkstemp(suffix=".py")
 		self._worker_func_file = os.fdopen(self._worker_func_fd, "w")
 		self._worker_func_file.write("from mpi4py import MPI\n")
 		self._worker_func_file.write("import tempfile\n")
