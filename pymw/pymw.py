@@ -120,7 +120,7 @@ class PyMW_Task:
 	TASK_ERROR = "error"
 	TASK_FINISHED = "finished"
 	
-	def __init__(self, task_name, executable, finished_queue, store_data_func, get_result_func,
+	def __init__(self, task_name, executable, executable_name, finished_queue, store_data_func, get_result_func,
 				 input_data=None, input_arg=None, output_arg=None, file_loc="tasks",
 				 data_file_zip=None, modules_file_zip=None, file_input=False, raw_exec=None):
 		# Make sure executable is valid
@@ -131,6 +131,7 @@ class PyMW_Task:
 		
 		self._finished_queue = finished_queue
 		self._executable = executable
+		self._executable_name = executable_name
 		self._input_data = input_data
 		self._output_data = None
 		self._task_name = task_name
@@ -172,7 +173,7 @@ class PyMW_Task:
 		return self._task_name
 	
 	def _state_data(self):
-		return {"task_name": self._task_name, "executable": self._executable,
+		return {"task_name": self._task_name, "executable": self._executable_name,
 				"input_arg": self._input_arg, "output_arg": self._output_arg,
 				"times": self._times, "state": self._task_state}
 	
@@ -584,7 +585,7 @@ class PyMW_Master:
 			store_func = self.pymw_master_write
 			get_result_func = self.pymw_master_read
 		
-		new_task = PyMW_Task(task_name=task_name, executable=exec_file_name,
+		new_task = PyMW_Task(task_name=task_name, executable=executable, executable_name=exec_file_name,
 							 store_data_func=store_func, get_result_func=get_result_func,
 							 finished_queue=self._finished_tasks, input_data=input_data,
 							 file_loc=self._task_dir_name, data_file_zip=zip_arch_file,

@@ -78,7 +78,7 @@ class MPIInterface:
 		self._available_worker_list.append(worker)
 
 	def execute_task(self, task, worker):
-		cmd = [task._executable, task._input_arg, task._output_arg]
+		cmd = [task._executable_name, task._input_arg, task._output_arg]
 		self._child_comm.send(cmd, dest=worker, tag=0)
 		res = self._child_comm.recv(source=worker, tag=1)
 		if res[1] is not 0:
