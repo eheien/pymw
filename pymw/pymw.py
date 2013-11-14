@@ -687,8 +687,11 @@ class PyMW_Master:
 		return obj
 	
 	def pymw_master_write(self, output, loc):
+		import os
 		outfile = open(loc, 'wb')
 		pickle.Pickler(outfile).dump(output)
+		outfile.flush()
+		os.fsync(outfile.fileno())
 		outfile.close()
 	
 	def pymw_worker_read(options):
@@ -698,8 +701,11 @@ class PyMW_Master:
 		return obj
 
 	def pymw_worker_write(output, options):
+		import os
 		outfile = open(sys.argv[2], 'wb')
 		pickle.Pickler(outfile).dump(output)
+		outfile.flush()
+		os.fsync(outfile.fileno())
 		outfile.close()
 
 	def pymw_set_progress(prog_ratio):
