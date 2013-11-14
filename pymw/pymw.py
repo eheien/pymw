@@ -19,7 +19,6 @@ import textwrap
 import threading
 import time
 import traceback
-import types
 import zipfile
 from .interfaces import generic
 
@@ -126,7 +125,7 @@ class PyMW_Task:
 				 data_file_zip=None, modules_file_zip=None, file_input=False, raw_exec=None):
 		# Make sure executable is valid
 		if not isinstance(executable, bytes) \
-			and not isinstance(executable, types.FunctionType) \
+			and not hasattr(executable, '__call__') \
 			and not isinstance(executable, str):
 			raise TypeError("executable must be a filename or Python function")
 		
