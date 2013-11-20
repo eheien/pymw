@@ -129,10 +129,10 @@ class PyMW_Task:
 			and not isinstance(executable, str):
 			raise TypeError("executable must be a filename or Python function")
 		
+		self.executable = executable
+		self.input_data = input_data
 		self._finished_queue = finished_queue
-		self._executable = executable
 		self._executable_name = executable_name
-		self._input_data = input_data
 		self._output_data = None
 		self._task_name = task_name
 		self._get_result_func = get_result_func
