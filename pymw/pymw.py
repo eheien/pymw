@@ -302,8 +302,8 @@ class PyMW_Scheduler:
 	def _reserve_task_worker(self, matched_task, matched_worker):
 		# Remove the task from the queue
 		popped_task = self._task_queue.pop_specific(item_list=[matched_task])
-		if not popped_task: matched_task = task_list[0]
-		
+		if not popped_task: raise TaskException("Requested reserved task does not exist")
+
 		# Reserve the worker with the interface
 		matched_task._assigned_worker = matched_worker
 		matched_task._worker_finish_func = self._worker_finished
@@ -366,9 +366,14 @@ class PyMW_Scheduler:
 				continue
 			
 			# Confirm the match and reserve the task and worker
-			self._reserve_task_worker(matched_task, matched_worker)
-			self._interface_worker_lock.release()
-			
+			try:
+				self._reserve_task_worker(matched_task, matched_worker)
+			except TaskException:
+				logging.error("PyMW internal error: could not find task from own scheduler")
+				break
+			finally:
+				self._interface_worker_lock.release()
+
 			# Wait until other tasks have been submitted and the thread count decreases,
 			# otherwise we might pass the process resource limitations
 			while threading.activeCount() > 100:
