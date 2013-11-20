@@ -75,8 +75,8 @@ class GANGAInterface:
 		# Create a template for this task
 		ganga_template = GANGA_TEMPLATE % { "GANGA_BKN": self._ganga_bkn,
 											"PYTHON_LOC": self._python_loc,
-											"PYMW_EXEC_FILE": task._executable,
-											"PYMW_EXEC_NAME": os.path.basename(task._executable),
+											"PYMW_EXEC_FILE": task._executable_name,
+											"PYMW_EXEC_NAME": os.path.basename(task._executable_name),
 											"PYMW_INPUT_FILE": task._input_arg,
 											"PYMW_INPUT_NAME": os.path.basename(task._input_arg),
 											"PYMW_OUTPUT_NAME": os.path.basename(task._output_arg) }

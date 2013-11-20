@@ -181,7 +181,7 @@ class BOINCInterface:
 			raise Exception("Missing BOINC project home directory (-p switch)")
 
 		bid = "_b" + self._batch_id
-		new_exe = task._executable 
+		new_exe = task._executable_name 
 		task_exe = os.path.basename(new_exe)
 
 		in_file = os.path.basename(task._input_arg)
@@ -238,9 +238,9 @@ class BOINCInterface:
 			if os.path.exists(exe_dest): os.remove(exe_dest)
 			
 			# Copy input files to download dir
-			while(not os.path.isfile(task._executable)):
+			while(not os.path.isfile(task._executable_name)):
 				logging.debug("Waiting for task exe to become ready")
-			shutil.copyfile(task._executable, exe_dest)
+			shutil.copyfile(task._executable_name, exe_dest)
 
 			while(not os.path.isfile(task._input_arg)):
 				logging.debug("Waiting for input to become ready...")

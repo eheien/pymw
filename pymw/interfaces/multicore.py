@@ -67,7 +67,7 @@ class MulticoreInterface:
 		# Pickle the input argument and remove it from the list
 		input_obj_str = pickle.dumps(self._input_objs[task._input_arg])
 
-		worker._exec_process = subprocess.Popen(args=[self._python_loc, task._executable, task._input_arg, task._output_arg],
+		worker._exec_process = subprocess.Popen(args=[self._python_loc, task._executable_name, task._input_arg, task._output_arg],
 												cwd=worker._worker_dir, creationflags=cf, stdin=subprocess.PIPE,
 												stdout=subprocess.PIPE, stderr=subprocess.PIPE)
 		# Wait for the process to finish

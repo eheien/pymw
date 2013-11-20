@@ -82,10 +82,10 @@ class CondorInterface:
 		condor_template = CONDOR_TEMPLATE
 		condor_template = condor_template.replace("<PYTHON_LOC/>", self._python_loc)
 		condor_template = condor_template.replace("<INITIAL_DIR/>", os.getcwd())
-		condor_template = condor_template.replace("<PYMW_EXEC_FILE/>", task._executable)
+		condor_template = condor_template.replace("<PYMW_EXEC_FILE/>", task._executable_name)
 		condor_template = condor_template.replace("<PYMW_INPUT_FILE/>", task._input_arg)
 		condor_template = condor_template.replace("<PYMW_OUTPUT_FILE/>", task._output_arg)
-		condor_template = condor_template.replace("<PYMW_EXEC_NAME/>", task._executable.split('/')[1])
+		condor_template = condor_template.replace("<PYMW_EXEC_NAME/>", task._executable_name.split('/')[1])
 		err_file_name = "tasks/"+task._task_name+".err"
 		condor_template = condor_template.replace("<PYMW_ERROR/>", err_file_name)
 		log_file_name = "tasks/"+task._task_name+".log"
