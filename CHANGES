@@ -1,6 +1,10 @@
 
 Changes in 0.5
 
+Changes in 0.4.1
+- Moved repository to GitHub
+- Bug fixes by David Narvaez
+
 Changes in 0.4
 - Added support for Python 3.0 (tested with Python 3.1)
 - Added Ganga interface (contributed by Wayne San)
