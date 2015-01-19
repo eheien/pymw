@@ -34,12 +34,12 @@ INPUT_TEMPLATE = """\
 $INPUT_ZIP_INFO
 <workunit>
 	<file_ref>
-		<file_number>0<file_number>
+		<file_number>0</file_number>
 		<open_name>$PYMW_EXECUTABLE</open_name>
 		<copy_file/>
 	</file_ref>
 	<file_ref>
-		<file_number>1<file_number>
+		<file_number>1</file_number>
 		<open_name>$PYMW_INPUT</open_name>
 		<copy_file/>
 	</file_ref>
